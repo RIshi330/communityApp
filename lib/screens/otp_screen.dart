@@ -22,7 +22,7 @@ class _OtpScreenState extends State<OtpScreen> {
   static const Color lavenderLight = Color(0xFFEEEFFF);
   static const Color grey = Color(0xFF757575);
 
-  static const String _apiUrl = '${baseUrl}/android/community/sign_up_API.php';
+  static const String _apiUrl = '${baseUrl}community/sign_up_API.php';
 
   final List<TextEditingController> _controllers = List.generate(
     6,

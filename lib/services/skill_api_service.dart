@@ -28,7 +28,7 @@ class Skill {
 
 class SkillsApiService {
   static const String baseUrl =
-      '${app_constants.baseUrl}/android/community/social_app_api_v1';
+  '${app_constants.baseUrl}community/social_app_api_v1.php';
 
   /// Fetch all skills
   static Future<List<Skill>> fetchSkills() async {

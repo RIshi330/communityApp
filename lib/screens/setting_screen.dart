@@ -1,5 +1,6 @@
 import 'package:commity_app1/screens/choicescreen.dart';
 import 'package:commity_app1/screens/industries_screen.dart';
+import 'package:commity_app1/screens/loginscreen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -1312,18 +1313,15 @@ class _SignOutSheet extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context); // close sheet
-                // ── Logout logic ──────────────────────────────────────
-                // TODO: Call your auth service here:
-                // AuthService.instance.signOut();
-                // Then navigate to login:
-                // Navigator.pushAndRemoveUntil(
-                //   context,
-                //   MaterialPageRoute(builder: (_) => const LoginScreen()),
-                //   (route) => false,
-                // );
-                // ─────────────────────────────────────────────────────
+                await AuthService.logout();
+                if (!context.mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.lavender,

@@ -4,9 +4,9 @@ import '../app_constants.dart' as app_constants;
 
 class ApiService {
   static const String baseUrl =
-      '${app_constants.baseUrl}/android/community/social_app_api_v1.php';
+    '${app_constants.baseUrl}community/social_app_api_v1.php';
   static const String uploadUrl =
-      '${app_constants.baseUrl}/android/community/upload_post_images.php';
+    '${app_constants.baseUrl}community/upload_post_images.php';
 
   /// Create new post
   static Future<Map<String, dynamic>> createPost({
