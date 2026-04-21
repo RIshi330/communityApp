@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:commity_app1/app_constants.dart';
 import 'package:commity_app1/screens/feed_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,8 +34,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   static const Color lavenderLight = Color(0xFFEEEFFF);
   static const Color grey = Color(0xFF757575);
 
-  static const String _apiUrl =
-      'http://192.168.40.76/SetupBackendCCBUL/SetupBackendCCBUL/android/community/sign_up_API.php';
+  static const String _apiUrl = '${baseUrl}/android/community/sign_up_API.php';
 
   @override
   void initState() {

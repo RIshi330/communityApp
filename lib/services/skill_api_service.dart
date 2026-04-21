@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../app_constants.dart' as app_constants;
 
 /// Skill/Interest Model
 class Skill {
@@ -25,13 +26,10 @@ class Skill {
   }
 }
 
-
 class SkillsApiService {
-  
-  
-  static const String baseUrl = 
-      'http://192.168.40.76/SetupBackendCCBUL/SetupBackendCCBUL/android/community/social_app_api_v1';
-  
+  static const String baseUrl =
+      '${app_constants.baseUrl}/android/community/social_app_api_v1';
+
   /// Fetch all skills
   static Future<List<Skill>> fetchSkills() async {
     try {
@@ -40,7 +38,7 @@ class SkillsApiService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        
+
         if (jsonData['success'] == true) {
           final List<dynamic> skillsJson = jsonData['data'] ?? [];
           return skillsJson.map((json) => Skill.fromJson(json)).toList();
@@ -56,7 +54,6 @@ class SkillsApiService {
     }
   }
 
-
   static Future<bool> saveUserInterests({
     required int vendorId,
     required List<int> interestIds,
@@ -64,7 +61,7 @@ class SkillsApiService {
   }) async {
     try {
       final url = Uri.parse(baseUrl);
-      
+
       final response = await http.post(
         url,
         body: {

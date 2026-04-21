@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/loginscreen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
@@ -64,15 +65,56 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
     );
   }
 
+  /// If local interest flag is missing, verify from API and cache it.
+  Future<bool> _resolveHasInterests(int vendorId) async {
+    final localHasInterests = await AuthService.hasSelectedInterests();
+    if (localHasInterests) return true;
+    if (vendorId <= 0) return false;
+
+    try {
+      final database = Database();
+      final response = await database.getData({
+        'action': 'get_user_interests',
+        'vendor_id': vendorId.toString(),
+      });
+
+      if (response['success'] == true || response['status'] == 200) {
+        final data = response['data'];
+        if (data is List && data.isNotEmpty) {
+          final interestIds = data
+              .map(
+                (item) =>
+                    int.tryParse(
+                      item['interest_id']?.toString() ??
+                          item['id']?.toString() ??
+                          '0',
+                    ) ??
+                    0,
+              )
+              .where((id) => id > 0)
+              .toList();
+
+          if (interestIds.isNotEmpty) {
+            await AuthService.saveUserInterests(interestIds);
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      print('Interest verification error on splash: $e');
+    }
+
+    return false;
+  }
+
   /// ✅ Check for existing 30-day session and decide navigation
   Future<void> _checkSessionAndNavigate() async {
     try {
       final isValid = await AuthService.isSessionValid();
 
       if (isValid) {
-        // Session is valid (within 30 days) - check interests
-        final hasInterests = await AuthService.hasSelectedInterests();
-        final vendorId = await AuthService.getVendorId();
+        final vendorId = await AuthService.getVendorId() ?? 0;
+        final hasInterests = await _resolveHasInterests(vendorId);
 
         if (hasInterests) {
           // User has interests selected - go directly to feed
@@ -80,11 +122,12 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
           _navigateTo(const AppShell());
         } else {
           // User needs to select interests
-          print('✅ Auto-login: Session valid, no interests → Interest Selection');
-          _navigateTo(TopicSelectionScreen(
-            vendorId: vendorId ?? 0,
-            isEditing: false,
-          ));
+          print(
+            '✅ Auto-login: Session valid, no interests → Interest Selection',
+          );
+          _navigateTo(
+            TopicSelectionScreen(vendorId: vendorId, isEditing: false),
+          );
         }
       } else {
         // No valid session - go to login
@@ -142,10 +185,8 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
   }
 
   Widget _buildParticles() => IgnorePointer(
-        child: SizedBox.expand(
-          child: CustomPaint(painter: ParticlePainter()),
-        ),
-      );
+    child: SizedBox.expand(child: CustomPaint(painter: ParticlePainter())),
+  );
 
   Widget _buildOrbit() {
     return SizedBox(
@@ -154,7 +195,10 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
       child: Stack(
         children: [
           if (!_showLogo)
-            CustomPaint(size: const Size(200, 100), painter: OrbitPathPainter()),
+            CustomPaint(
+              size: const Size(200, 100),
+              painter: OrbitPathPainter(),
+            ),
           for (int i = 0; i < _icons.length; i++)
             Positioned(
               child: AnimatedBuilder(
@@ -211,10 +255,12 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
                 ),
                 child: AnimatedTextKit(
                   animatedTexts: _texts
-                      .map((text) => FadeAnimatedText(
-                            text,
-                            duration: const Duration(milliseconds: 900),
-                          ))
+                      .map(
+                        (text) => FadeAnimatedText(
+                          text,
+                          duration: const Duration(milliseconds: 900),
+                        ),
+                      )
                       .toList(),
                   totalRepeatCount: 1,
                   onFinished: _startEndingSequence,
@@ -268,7 +314,10 @@ class OrbitPathPainter extends CustomPainter {
       ..color = const Color(0xFF6496ff).withOpacity(0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    final rect = Rect.fromCircle(center: Offset(size.width / 2, 100), radius: 80);
+    final rect = Rect.fromCircle(
+      center: Offset(size.width / 2, 100),
+      radius: 80,
+    );
     canvas.drawArc(rect, pi, pi, false, paint);
   }
 

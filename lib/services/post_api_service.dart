@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../app_constants.dart' as app_constants;
 
 class ApiService {
-  
-  
- static const String baseUrl = 'http://192.168.40.76/SetupBackendCCBUL/SetupBackendCCBUL/android/community/social_app_api_v1.php';
-  static const String uploadUrl = 'http://192.168.40.76/SetupBackendCCBUL/SetupBackendCCBUL/android/community/upload_post_images.php';
-  
+  static const String baseUrl =
+      '${app_constants.baseUrl}/android/community/social_app_api_v1.php';
+  static const String uploadUrl =
+      '${app_constants.baseUrl}/android/community/upload_post_images.php';
 
   /// Create new post
   static Future<Map<String, dynamic>> createPost({
@@ -43,10 +43,7 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error creating post: $e');
-      return {
-        'success': false,
-        'message': e.toString(),
-      };
+      return {'success': false, 'message': e.toString()};
     }
   }
 
@@ -61,10 +58,7 @@ class ApiService {
 
       for (int i = 0; i < imagePaths.length; i++) {
         request.files.add(
-          await http.MultipartFile.fromPath(
-            'images[]',
-            imagePaths[i],
-          ),
+          await http.MultipartFile.fromPath('images[]', imagePaths[i]),
         );
       }
 
@@ -80,10 +74,7 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error uploading images: $e');
-      return {
-        'success': false,
-        'message': e.toString(),
-      };
+      return {'success': false, 'message': e.toString()};
     }
   }
 }

@@ -8,6 +8,7 @@ class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyVendorId = 'vendor_id';
   static const String _keyLoginTimestamp = 'login_timestamp';
+  static const String _keyLastActiveTimestamp = 'last_active_timestamp';
   static const String _keyUserData = 'user_data_cache';
   static const String _keyUserInterests = 'user_interests';
   static const String _keyHasSelectedInterests = 'has_selected_interests';
@@ -22,31 +23,46 @@ class AuthService {
     Map<String, dynamic>? userData,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now().millisecondsSinceEpoch;
     await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setInt(_keyVendorId, vendorId);
-    await prefs.setInt(_keyLoginTimestamp, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(_keyLoginTimestamp, now);
+    await prefs.setInt(_keyLastActiveTimestamp, now);
 
     if (userData != null) {
       await prefs.setString(_keyUserData, jsonEncode(userData));
     }
   }
 
-  /// Check if user is logged in and session is still valid (within 30 days)
+  /// Update last active timestamp to current time
+  static Future<void> touchSessionActivity() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      _keyLastActiveTimestamp,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  /// Check if user is logged in and session is still valid (inactive < 30 days)
   static Future<bool> isSessionValid() async {
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
     if (!isLoggedIn) return false;
 
     final loginTimestamp = prefs.getInt(_keyLoginTimestamp) ?? 0;
+    final lastActiveTimestamp =
+        prefs.getInt(_keyLastActiveTimestamp) ?? loginTimestamp;
     final currentTime = DateTime.now().millisecondsSinceEpoch;
-    final elapsed = currentTime - loginTimestamp;
+    final elapsed = currentTime - lastActiveTimestamp;
 
-    // Check if within 30-day window
+    // Auto logout if user did not open app for 30+ days
     if (elapsed > _sessionDurationMs) {
-      // Session expired - clear data
-      await clearSession();
+      await logout();
       return false;
     }
+
+    // Keep session alive based on recent app opens/activity
+    await prefs.setInt(_keyLastActiveTimestamp, currentTime);
 
     return true;
   }
@@ -55,11 +71,11 @@ class AuthService {
   static Future<int?> getVendorId() async {
     final prefs = await SharedPreferences.getInstance();
     int? vendorId = prefs.getInt(_keyVendorId);
-    
+
     if (vendorId != null && vendorId != 0) {
       return vendorId;
     }
-    
+
     // Fallback: check FlutterSecureStorage from Database
     try {
       final db = Database();
@@ -75,7 +91,7 @@ class AuthService {
     } catch (e) {
       print('Fallback int vendor ID error: $e');
     }
-    
+
     return null;
   }
 
@@ -85,19 +101,20 @@ class AuthService {
     if (vendorId != null && vendorId != 0) {
       return vendorId.toString();
     }
-    
+
     // Fallback: check FlutterSecureStorage from Database (e.g., after auto_login)
     try {
       final db = Database();
       final userData = await db.getUserData();
       if (userData != null) {
-        if (userData['vendor_id'] != null) return userData['vendor_id'].toString();
+        if (userData['vendor_id'] != null)
+          return userData['vendor_id'].toString();
         if (userData['id'] != null) return userData['id'].toString();
       }
     } catch (e) {
       print('Fallback vendor ID error: $e');
     }
-    
+
     return '0';
   }
 
@@ -142,14 +159,21 @@ class AuthService {
   }
 
   /// Save user location
-  static Future<void> saveUserLocation(double lat, double lng, String? address) async {
+  static Future<void> saveUserLocation(
+    double lat,
+    double lng,
+    String? address,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserLocation, jsonEncode({
-      'latitude': lat,
-      'longitude': lng,
-      'address': address ?? '',
-      'timestamp': DateTime.now().toIso8601String(),
-    }));
+    await prefs.setString(
+      _keyUserLocation,
+      jsonEncode({
+        'latitude': lat,
+        'longitude': lng,
+        'address': address ?? '',
+        'timestamp': DateTime.now().toIso8601String(),
+      }),
+    );
   }
 
   /// Get saved location
@@ -168,6 +192,7 @@ class AuthService {
     await prefs.remove(_keyIsLoggedIn);
     await prefs.remove(_keyVendorId);
     await prefs.remove(_keyLoginTimestamp);
+    await prefs.remove(_keyLastActiveTimestamp);
     await prefs.remove(_keyUserData);
     await prefs.remove(_keyUserInterests);
     await prefs.remove(_keyHasSelectedInterests);
@@ -179,10 +204,7 @@ class AuthService {
     try {
       final vendorId = await getVendorIdString();
       final database = Database();
-      await database.getData({
-        'action': 'logout',
-        'vendor_id': vendorId,
-      });
+      await database.getData({'action': 'logout', 'vendor_id': vendorId});
     } catch (e) {
       print('Logout API error (non-critical): $e');
     }

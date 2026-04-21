@@ -11,9 +11,8 @@ class Database {
   int retry = 0;
 
   /// Get Android options for secure storage
-  AndroidOptions _getAndroidOptions() => const AndroidOptions(
-    encryptedSharedPreferences: true,
-  );
+  AndroidOptions _getAndroidOptions() =>
+      const AndroidOptions(encryptedSharedPreferences: true);
 
   /// Main API communication method
   /// Handles all API calls with session management and error handling
@@ -26,14 +25,16 @@ class Database {
 
     try {
       // Convert all body values to strings to avoid type cast issues
-      stringBody = postBody.map((key, value) => MapEntry(key, value?.toString() ?? ''));
-      
+      stringBody = postBody.map(
+        (key, value) => MapEntry(key, value?.toString() ?? ''),
+      );
+
       final response = await http.post(
-        Uri.parse(baseUrlLegacy),
+        Uri.parse(apiUrl),
         body: stringBody,
         headers: {
-          'APP_ID' : appId.toString(),
-          'SESSION_ID' : existingSessionId?.toString() ?? '',
+          'APP_ID': appId.toString(),
+          'SESSION_ID': existingSessionId?.toString() ?? '',
         },
       );
 
@@ -41,7 +42,7 @@ class Database {
       print('RAW RESPONSE BODY: "${copy}"');
       print('RESPONSE STATUS CODE: ${response.statusCode}');
       print('RESPONSE HEADERS: ${response.headers}');
-      
+
       if (copy.isEmpty) {
         print('EMPTY RESPONSE - Server returned no content');
         result = {
@@ -55,17 +56,13 @@ class Database {
       } else {
         try {
           dynamic decodedResponse = jsonDecode(copy);
-          
+
           // Handle both Map and List responses
           if (decodedResponse is Map) {
             result = Map<String, dynamic>.from(decodedResponse);
           } else if (decodedResponse is List) {
             // If it's a list, wrap it in a map for consistency
-            result = {
-              'success': true,
-              'data': decodedResponse,
-              'status': 200,
-            };
+            result = {'success': true, 'data': decodedResponse, 'status': 200};
           } else {
             result = decodedResponse;
           }
@@ -86,7 +83,9 @@ class Database {
       }
 
       // Store Razorpay key if present
-      if (result.containsKey('RAZORPAY_KEY') && result['RAZORPAY_KEY'] != null && liveModeEnabled) {
+      if (result.containsKey('RAZORPAY_KEY') &&
+          result['RAZORPAY_KEY'] != null &&
+          liveModeEnabled) {
         var razorpayKey = result['RAZORPAY_KEY'];
         await storage.write(key: "razorpay_key", value: razorpayKey.toString());
       } else {
@@ -96,14 +95,20 @@ class Database {
 
       // Store admin email if present
       if (result.containsKey('admin_email') && result['admin_email'] != null) {
-        await storage.write(key: 'admin_email', value: result['admin_email'].toString());
+        await storage.write(
+          key: 'admin_email',
+          value: result['admin_email'].toString(),
+        );
       }
 
       // Handle session management - FIXED NULL SAFETY
       if (existingSessionId == null &&
           result.containsKey('SESSION_ID') &&
           result['SESSION_ID'] != null) {
-        await storage.write(key: "SESSION_ID", value: result['SESSION_ID'].toString());
+        await storage.write(
+          key: "SESSION_ID",
+          value: result['SESSION_ID'].toString(),
+        );
       } else if (result['status'] == 400 && result.containsKey("logged_out")) {
         if (retry == 0) {
           retry = 1;
@@ -130,7 +135,7 @@ class Database {
 
             var result = res['LOGIN_RESPONSE'];
 
-            if (result != null && 
+            if (result != null &&
                 result['status'] == 200 &&
                 result['long_term_access_token'] != null &&
                 result['token_verifier'] != null) {
@@ -138,13 +143,22 @@ class Database {
               final validator = result['token_verifier'];
 
               await storage.write(key: "access_token", value: token.toString());
-              await storage.write(key: "validator", value: validator.toString());
               await storage.write(
-                  key: "user_data", value: jsonEncode(result['full_data'] ?? {}));
+                key: "validator",
+                value: validator.toString(),
+              );
               await storage.write(
-                  key: "user_products", value: jsonEncode(res['PRODUCTS'] ?? {}));
+                key: "user_data",
+                value: jsonEncode(result['full_data'] ?? {}),
+              );
               await storage.write(
-                  key: "filters", value: jsonEncode(res['filters'] ?? {}));
+                key: "user_products",
+                value: jsonEncode(res['PRODUCTS'] ?? {}),
+              );
+              await storage.write(
+                key: "filters",
+                value: jsonEncode(res['filters'] ?? {}),
+              );
 
               return await getData(postBody);
             }
@@ -155,17 +169,17 @@ class Database {
       print('Database.dart - Network Error Details:');
       print('Error: $e');
       print('Error Type: ${e.runtimeType}');
-      print('Base URL: $baseUrlLegacy');
+      print('Base URL: $apiUrl');
       print('Request Body: $stringBody');
-      
+
       result = {
         "status": 300,
         "error": "Server not reachable - ${e.toString()}",
         "debug_info": {
-          "base_url": baseUrlLegacy,
+          "base_url": apiUrl,
           "error_type": e.runtimeType.toString(),
           "error_message": e.toString(),
-        }
+        },
       };
     }
 
@@ -224,7 +238,10 @@ class Database {
   /// Store user preferences
   Future<void> storeUserPreferences(Map<String, dynamic> preferences) async {
     final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
-    await storage.write(key: "user_preferences", value: jsonEncode(preferences));
+    await storage.write(
+      key: "user_preferences",
+      value: jsonEncode(preferences),
+    );
   }
 
   /// Get user preferences
