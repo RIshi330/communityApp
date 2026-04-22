@@ -14,104 +14,13 @@ const _kBorder = AppTheme.border;
 const _kMuted = AppTheme.muted;
 const _kGrad = [Color(0xFF7C83FD), Color(0xFF9B8FFF)];
 
-List<Post> _userPhotoPosts = [
-  Post(
-    id: 'up1',
-    username: 'User',
-    userImage: 'https://i.pravatar.cc/150?img=12',
-    postImages: [
-      'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800',
-    ],
-    likes: 0,
-    caption: 'Hare Krishna 🙏 Beautiful day!',
-    timeAgo: '2h',
-    comments: 0,
-    shares: 5,
-    commentsList: [],
-  ),
-  Post(
-    id: 'up2',
-    username: 'User',
-    userImage: 'https://i.pravatar.cc/150?img=12',
-    postImages: [
-      'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800',
-    ],
-    likes: 0,
-    caption: 'Karm | Dharm | Moksha ✨',
-    timeAgo: '5h',
-    comments: 0,
-    shares: 3,
-    commentsList: [],
-  ),
-  Post(
-    id: 'up3',
-    username: 'User',
-    userImage: 'https://i.pravatar.cc/150?img=12',
-    postImages: [
-      'https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=800',
-      'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800',
-    ],
-    likes: 0,
-    caption: 'Good vibes only 🌸 #Life',
-    timeAgo: '1d',
-    comments: 0,
-    shares: 7,
-    commentsList: [],
-  ),
-];
+List<Post> _userPhotoPosts = [];
 
-final List<String> _userReels = [
-  'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400',
-  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
-  'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400',
-];
+final List<String> _userReels = [];
 
-List<Map<String, dynamic>> _followers = List.generate(
-  10,
-  (i) => {
-    'name': [
-      'Harshad',
-      'Pratu',
-      'Shiv Kumar',
-      'Payal',
-      'Yashraj',
-      'Rohan',
-      'Sujal Salke',
-      'Shashi Bagal',
-      'Rushikesh',
-      'Nishant Rathod',
-    ][i],
-    'image': 'https://i.pravatar.cc/150?img=${i + 1}',
-    'mutual': '${(i + 1) * 2} mutual friends',
-    'isFollowing': i % 3 == 0,
-  },
-);
+List<Map<String, dynamic>> _followers = [];
 
-List<Map<String, dynamic>> _following = List.generate(
-  15,
-  (i) => {
-    'name': [
-      'Sujal Salke',
-      'Rushikesh Shinde',
-      'Shashi Bagal',
-      'Core2web Pune',
-      'Chautha Stambh',
-      'Rohan',
-      'Nishant Rathod',
-      'Harsh Raktate',
-      'Aakash',
-      'Priya',
-      'Ravi',
-      'Ankit',
-      'Sneha M',
-      'Vikas',
-      'Pooja K',
-    ][i],
-    'image': 'https://i.pravatar.cc/150?img=${i + 20}',
-    'mutual': '${(i + 1) * 3} mutual friends',
-    'isFollowing': true,
-  },
-);
+List<Map<String, dynamic>> _following = [];
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -149,6 +58,83 @@ class _ProfileScreenState extends State<ProfileScreen>
     return list;
   }
 
+  int _toInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  List<String> _extractImages(dynamic value) {
+    if (value is List) {
+      return value
+          .map((item) => item?.toString() ?? '')
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      return [value];
+    }
+    return [];
+  }
+
+  String _resolveCaption(Map<String, dynamic> post) {
+    final caption =
+        post['label'] ?? post['content'] ?? post['caption'] ?? post['tags'];
+    return caption?.toString().trim() ?? '';
+  }
+
+  String _resolveTimeAgo(dynamic value) {
+    final parsed = value is String ? DateTime.tryParse(value) : null;
+    if (parsed == null) {
+      return 'Just now';
+    }
+
+    final diff = DateTime.now().difference(parsed);
+    if (diff.inDays > 0) {
+      return '${diff.inDays}d';
+    }
+    if (diff.inHours > 0) {
+      return '${diff.inHours}h';
+    }
+    if (diff.inMinutes > 0) {
+      return '${diff.inMinutes}m';
+    }
+    return 'Just now';
+  }
+
+  Post _postFromApi(
+    Map<String, dynamic> post, {
+    required String fallbackName,
+    required String fallbackImage,
+  }) {
+    final images = _extractImages(post['images']);
+    final imageList = images.isNotEmpty ? images : [fallbackImage];
+
+    return Post(
+      id: post['id']?.toString() ?? post['post_id']?.toString() ?? '',
+      username: post['vendor_name']?.toString() ?? fallbackName,
+      userImage: post['profile_pic']?.toString() ?? fallbackImage,
+      postImages: imageList,
+      likes: _toInt(post['total_likes'] ?? post['likes']),
+      caption: _resolveCaption(post),
+      timeAgo: _resolveTimeAgo(post['created_date']),
+      comments: _toInt(post['total_comments'] ?? post['comments']),
+      shares: _toInt(post['shares']),
+      commentsList: [],
+    );
+  }
+
+  Map<String, dynamic> _personFromApi(Map<String, dynamic> person) {
+    return {
+      'name': person['name']?.toString() ?? '',
+      'image': person['image']?.toString() ?? '',
+      'mutual': person['mutual']?.toString() ?? '',
+      'isFollowing':
+          person['isFollowing'] == true || person['isFollowing'] == 1,
+    };
+  }
+
   @override
   void initState() {
     super.initState();
@@ -172,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     try {
       final database = Database();
-      
+
       // Call Database.getData with profile action and vendor_id
       final response = await database.getData({
         'action': 'profile',
@@ -185,25 +171,74 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       if (response['success'] == true || response['status'] == 200) {
         final profileData = response['data'];
-        
+
         if (profileData != null) {
           final profile = profileData['profile'];
           final totalPosts = profileData['total_posts'] ?? 0;
           final followers = profileData['followers'] ?? 0;
           final following = profileData['following'] ?? 0;
+          final postsData = profileData['posts'];
+          final followersData = profileData['followers_list'];
+          final followingData = profileData['following_list'];
+
+          final apiPosts = <Post>[];
+          final apiReels = <String>[];
+          if (postsData is List) {
+            for (final item in postsData) {
+              if (item is! Map<String, dynamic>) {
+                continue;
+              }
+              final post = _postFromApi(
+                item,
+                fallbackName: profile['name']?.toString() ?? 'User',
+                fallbackImage: profile['profile_pic']?.toString() ?? '',
+              );
+              apiPosts.add(post);
+
+              final contentType =
+                  item['content_type']?.toString().toLowerCase() ?? '';
+              if (contentType.contains('reel') ||
+                  contentType.contains('video')) {
+                if (post.postImages.isNotEmpty) {
+                  apiReels.add(post.postImages.first);
+                }
+              }
+            }
+          }
+
+          final apiFollowers = <Map<String, dynamic>>[];
+          if (followersData is List) {
+            for (final item in followersData) {
+              if (item is Map<String, dynamic>) {
+                apiFollowers.add(_personFromApi(item));
+              }
+            }
+          }
+
+          final apiFollowing = <Map<String, dynamic>>[];
+          if (followingData is List) {
+            for (final item in followingData) {
+              if (item is Map<String, dynamic>) {
+                apiFollowing.add(_personFromApi(item));
+              }
+            }
+          }
 
           setState(() {
             // Profile details
             _name = profile['name']?.toString() ?? 'User';
-            _location = profile['city']?.toString() ?? profile['address']?.toString() ?? '';
-            
+            _location =
+                profile['city']?.toString() ??
+                profile['address']?.toString() ??
+                '';
+
             // Profile image
-            if (profile['profile_pic'] != null && 
+            if (profile['profile_pic'] != null &&
                 profile['profile_pic'].toString().isNotEmpty &&
                 profile['profile_pic'].toString() != 'null') {
               _profileImage = profile['profile_pic'].toString();
             }
-            
+
             // Bio (combine bio fields)
             String bio = profile['bio']?.toString() ?? '';
             if (bio.isEmpty) {
@@ -211,11 +246,22 @@ class _ProfileScreenState extends State<ProfileScreen>
             }
             _bio1 = bio;
             _bio2 = ''; // Can be extended for additional bio fields
-            
+
             // ✅ Set followers/following counts from API
-            _followersCount = followers is int ? followers : int.tryParse(followers.toString()) ?? 0;
-            _followingCount = following is int ? following : int.tryParse(following.toString()) ?? 0;
-            
+            _followersCount = followers is int
+                ? followers
+                : int.tryParse(followers.toString()) ?? 0;
+            _followingCount = following is int
+                ? following
+                : int.tryParse(following.toString()) ?? 0;
+
+            _userPhotoPosts = apiPosts;
+            _userReels
+              ..clear()
+              ..addAll(apiReels);
+            _followers = apiFollowers;
+            _following = apiFollowing;
+
             _isLoadingProfile = false;
           });
 
@@ -236,7 +282,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       } else {
         setState(() {
-          _errorMessage = response['message']?.toString() ?? response['error']?.toString() ?? 'Failed to load profile';
+          _errorMessage =
+              response['message']?.toString() ??
+              response['error']?.toString() ??
+              'Failed to load profile';
           _isLoadingProfile = false;
         });
         print("❌ API Error: $_errorMessage");
@@ -255,7 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _updateProfile({String? name, String? bio, String? city}) async {
     try {
       final database = Database();
-      
+
       // Create request body for update_profile
       final requestBody = {
         'action': 'update_profile',
@@ -264,9 +313,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         'bio': bio ?? _bio1,
         'city': city ?? _location,
       };
-      
-      print("🔍 Update Profile Request: $requestBody"); // Debug what we're sending
-      
+
+      print(
+        "🔍 Update Profile Request: $requestBody",
+      ); // Debug what we're sending
+
       // Call Database.getData with update_profile action and vendor_id
       final response = await database.getData(requestBody);
 
@@ -277,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (response['success'] == true || response['status'] == 200) {
         // Refresh profile data after update
         _fetchProfile();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
@@ -288,7 +339,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message']?.toString() ?? 'Failed to update profile'),
+            content: Text(
+              response['message']?.toString() ?? 'Failed to update profile',
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -602,17 +655,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       children: [
                         _stat('${posts.length}', 'Posts', null),
                         const SizedBox(width: 20),
-                        _stat(
-                          '$_followersCount',
-                          'Followers',
-                          _openFollowers,
-                        ),
+                        _stat('$_followersCount', 'Followers', _openFollowers),
                         const SizedBox(width: 20),
-                        _stat(
-                          '$_followingCount',
-                          'Following',
-                          _openFollowing,
-                        ),
+                        _stat('$_followingCount', 'Following', _openFollowing),
                       ],
                     ),
                   ],
@@ -1480,39 +1525,39 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _openFollowers() => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FriendsScreen(
-            username: _name,
-            initialTab: 0,
-            followers: _followers,
-            following: _following,
-          ),
-        ),
-      );
+    context,
+    MaterialPageRoute(
+      builder: (_) => FriendsScreen(
+        username: _name,
+        initialTab: 0,
+        followers: _followers,
+        following: _following,
+      ),
+    ),
+  );
   void _openFollowing() => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FriendsScreen(
-            username: _name,
-            initialTab: 1,
-            followers: _followers,
-            following: _following,
-          ),
-        ),
-      );
+    context,
+    MaterialPageRoute(
+      builder: (_) => FriendsScreen(
+        username: _name,
+        initialTab: 1,
+        followers: _followers,
+        following: _following,
+      ),
+    ),
+  );
   void _viewProfilePhoto() => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => _PhotoViewer(imageUrl: _profileImage)),
-      );
+    context,
+    MaterialPageRoute(builder: (_) => _PhotoViewer(imageUrl: _profileImage)),
+  );
   void _viewPhoto(String url) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => _PhotoViewer(imageUrl: url)),
-      );
+    context,
+    MaterialPageRoute(builder: (_) => _PhotoViewer(imageUrl: url)),
+  );
   void _showAllPhotos(List<String> photos) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => _AllPhotosScreen(photos: photos)),
-      );
+    context,
+    MaterialPageRoute(builder: (_) => _AllPhotosScreen(photos: photos)),
+  );
 
   void _openEditProfile() async {
     final r = await Navigator.push<Map<String, String>>(
@@ -1753,25 +1798,25 @@ class _PhotoViewer extends StatelessWidget {
   const _PhotoViewer({required this.imageUrl});
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
+    backgroundColor: Colors.black,
+    appBar: AppBar(
+      backgroundColor: Colors.black,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
+      ),
+    ),
+    body: Center(
+      child: InteractiveViewer(
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, color: Colors.white54, size: 80),
         ),
-        body: Center(
-          child: InteractiveViewer(
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image,
-                  color: Colors.white54, size: 80),
-            ),
-          ),
-        ),
-      );
+      ),
+    ),
+  );
 }
 
 // ─── ALL PHOTOS SCREEN ────────────────────────────────────────────────────────
@@ -1780,46 +1825,44 @@ class _AllPhotosScreen extends StatelessWidget {
   const _AllPhotosScreen({required this.photos});
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0.5,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            'All Photos',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
+    backgroundColor: Colors.white,
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0.5,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text(
+        'All Photos',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
         ),
-        body: GridView.builder(
-          padding: const EdgeInsets.all(4),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 3,
-            mainAxisSpacing: 3,
-          ),
-          itemCount: photos.length,
-          itemBuilder: (ctx, i) => GestureDetector(
-            onTap: () => Navigator.push(
-              ctx,
-              MaterialPageRoute(
-                  builder: (_) => _PhotoViewer(imageUrl: photos[i])),
-            ),
-            child: Image.network(
-              photos[i],
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: Colors.grey.shade200),
-            ),
-          ),
+      ),
+    ),
+    body: GridView.builder(
+      padding: const EdgeInsets.all(4),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 3,
+        mainAxisSpacing: 3,
+      ),
+      itemCount: photos.length,
+      itemBuilder: (ctx, i) => GestureDetector(
+        onTap: () => Navigator.push(
+          ctx,
+          MaterialPageRoute(builder: (_) => _PhotoViewer(imageUrl: photos[i])),
         ),
-      );
+        child: Image.network(
+          photos[i],
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200),
+        ),
+      ),
+    ),
+  );
 }
 
 // ─── EDIT PROFILE SCREEN ──────────────────────────────────────────────────────

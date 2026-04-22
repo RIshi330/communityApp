@@ -20,59 +20,70 @@ class _AppShellState extends State<AppShell> {
   // ✅ Exit confirmation dialog
   Future<bool> _showExitConfirmation() async {
     return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text(
-            'Exit App',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 17,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to exit the app?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, fontSize: 14, height: 1.5),
-          ),
-          actionsPadding: EdgeInsets.zero,
-          actions: [
-            Divider(height: 1, color: Colors.grey.shade200),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.black54, fontSize: 16),
-                    ),
-                  ),
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Exit App',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
                 ),
-                Container(width: 1, height: 48, color: Colors.grey.shade200),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text(
-                      'Exit',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+              ),
+              content: const Text(
+                'Are you sure you want to exit the app?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              actionsPadding: EdgeInsets.zero,
+              actions: [
+                Divider(height: 1, color: Colors.grey.shade200),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.black54, fontSize: 16),
+                        ),
                       ),
                     ),
-                  ),
+                    Container(
+                      width: 1,
+                      height: 48,
+                      color: Colors.grey.shade200,
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text(
+                          'Exit',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+            );
+          },
+        ) ??
+        false;
   }
 
   // ✅ Create options modal bottom sheet
@@ -310,27 +321,47 @@ class _AppShellState extends State<AppShell> {
 
         appBar: isFeed
             ? null
-            : AppBar(
-                backgroundColor: const Color(0xff8F7CFF),
-                elevation: 0,
-                centerTitle: true,
-                title: const Text(
-                  "Lavender",
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.notification_add,
-                        color: Colors.black),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => NotificationsScreen()),
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: Container(
+                  color: const Color(0xff8F7CFF),
+                  child: SafeArea(
+                    bottom: false,
+                    child: SizedBox(
+                      height: kToolbarHeight,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Center(
+                            child: Text(
+                              'Lavender',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.notification_add,
+                                color: Colors.black,
+                              ),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => NotificationsScreen(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                ],
+                ),
               ),
 
         body: currentScreen,
@@ -342,7 +373,9 @@ class _AppShellState extends State<AppShell> {
             child: SizedBox(
               height: 75,
               child: BottomNavigationBar(
-                currentIndex: index == 2 ? 0 : index, // ✅ index 2 select dikhvaycha nahi
+                currentIndex: index == 2
+                    ? 0
+                    : index, // ✅ index 2 select dikhvaycha nahi
                 onTap: (i) {
                   if (i == 2) {
                     // ✅ Show options instead of direct navigation
@@ -361,17 +394,25 @@ class _AppShellState extends State<AppShell> {
                 unselectedItemColor: Colors.white,
                 items: const [
                   BottomNavigationBarItem(
-                      icon: Icon(Icons.home, size: 26), label: ""),
+                    icon: Icon(Icons.home, size: 26),
+                    label: "",
+                  ),
                   BottomNavigationBarItem(
-                      icon: Icon(Icons.send_sharp, size: 26), label: ""),
+                    icon: Icon(Icons.send_sharp, size: 26),
+                    label: "",
+                  ),
                   BottomNavigationBarItem(
-                      icon: Icon(Icons.add_circle_outline, size: 30),
-                      label: ""),
+                    icon: Icon(Icons.add_circle_outline, size: 30),
+                    label: "",
+                  ),
                   BottomNavigationBarItem(
-                      icon: Icon(Icons.play_arrow_rounded, size: 26),
-                      label: ""),
+                    icon: Icon(Icons.play_arrow_rounded, size: 26),
+                    label: "",
+                  ),
                   BottomNavigationBarItem(
-                      icon: Icon(Icons.person, size: 26), label: ""),
+                    icon: Icon(Icons.person, size: 26),
+                    label: "",
+                  ),
                 ],
               ),
             ),

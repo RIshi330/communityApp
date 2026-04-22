@@ -2,6 +2,7 @@
 
 import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
+import 'package:commity_app1/screens/chat_screen.dart';
 import 'package:commity_app1/screens/group_screen.dart'; // fixed: groups_screen (with s)
 import 'package:commity_app1/screens/loginscreen.dart';
 import 'package:commity_app1/screens/setting_screen.dart';
@@ -81,7 +82,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<void> _fetchUserProfile() async {
     try {
       final database = Database();
-      
+
       final response = await database.getData({
         'action': 'profile',
         'vendor_id': _vendorId, // ✅ Dynamic vendor ID
@@ -89,16 +90,17 @@ class _FeedScreenState extends State<FeedScreen> {
 
       if (response['success'] == true || response['status'] == 200) {
         final profileData = response['data'];
-        
+
         if (profileData != null) {
           final profile = profileData['profile'];
-          
+
           setState(() {
             // ✅ Update user data from API (like profile screen)
             _userName = profile['name']?.toString() ?? 'User';
-            _userHandle = '@${profile['name']?.toString().toLowerCase().replaceAll(' ', '_') ?? 'user'}';
+            _userHandle =
+                '@${profile['name']?.toString().toLowerCase().replaceAll(' ', '_') ?? 'user'}';
           });
-          
+
           print("✅ User profile loaded: $_userName, $_userHandle");
         }
       }
@@ -111,45 +113,57 @@ class _FeedScreenState extends State<FeedScreen> {
   // Load posts from API
   Future<void> _loadPosts() async {
     setState(() => _isLoadingPosts = true);
-    
+
     try {
       final database = Database();
-      
+
       // ✅ Fetch user's saved interests
       final savedInterests = await AuthService.getSavedInterests();
       final interestsFilter = savedInterests?.join(',') ?? '';
-      
+
       // Call view_all_posts API
       final response = await database.getData({
         'action': 'view_all_posts',
         'vendor_id': _vendorId, // ✅ Dynamic vendor ID
-        if (interestsFilter.isNotEmpty) 'interests': interestsFilter, // ✅ Pass interests to backend
+        if (interestsFilter.isNotEmpty)
+          'interests': interestsFilter, // ✅ Pass interests to backend
       });
-      
-      print(" View All Posts Request: action=view_all_posts, vendor_id=$_vendorId, interests=$interestsFilter");
+
+      print(
+        " View All Posts Request: action=view_all_posts, vendor_id=$_vendorId, interests=$interestsFilter",
+      );
       print(" View All Posts Response: $response");
 
       if (response['success'] == true || response['status'] == 200) {
         final List<dynamic> postsData = response['data'] ?? [];
-        
+
         // Convert API data to Post objects
         List<Post> apiPosts = postsData.map((postJson) {
           final post = postJson as Map<String, dynamic>;
-          final List<String> images = (post['images'] as List<dynamic>?)
-              ?.map((img) => img.toString())
-              .toList() ?? [];
-          
+          final List<String> images =
+              (post['images'] as List<dynamic>?)
+                  ?.map((img) => img.toString())
+                  .toList() ??
+              [];
+
           return Post(
             id: post['id']?.toString() ?? '',
             username: post['vendor_name']?.toString() ?? 'Unknown User',
-            userImage: 'https://i.pravatar.cc/150?img=${post['vendor_id'] ?? 1}',
-            postImages: images.isNotEmpty ? images : ['https://picsum.photos/800/600?random=${post['id']}'],
+            userImage:
+                'https://i.pravatar.cc/150?img=${post['vendor_id'] ?? 1}',
+            postImages: images.isNotEmpty
+                ? images
+                : ['https://picsum.photos/800/600?random=${post['id']}'],
             likes: 0, // TODO: Add likes count to API
             caption: post['label']?.toString() ?? '',
             timeAgo: _formatTimeAgo(post['created_date']?.toString() ?? ''),
             comments: 0, // TODO: Add comments count to API
             shares: 0, // TODO: Add shares count to API
-            isVerified: post['vendor_name']?.toString().toLowerCase().contains('virat') ?? false,
+            isVerified:
+                post['vendor_name']?.toString().toLowerCase().contains(
+                  'virat',
+                ) ??
+                false,
           );
         }).toList();
 
@@ -157,7 +171,6 @@ class _FeedScreenState extends State<FeedScreen> {
           posts = apiPosts;
           _addUserPosts(); // Add local posts
         });
-        
       } else {
         // Fallback to dummy data if API fails
         _loadDummyPosts();
@@ -175,12 +188,12 @@ class _FeedScreenState extends State<FeedScreen> {
   // Format time ago from created_date
   String _formatTimeAgo(String? createdDate) {
     if (createdDate == null || createdDate.isEmpty) return 'Just now';
-    
+
     try {
       final dateTime = DateTime.parse(createdDate);
       final now = DateTime.now();
       final difference = now.difference(dateTime);
-      
+
       if (difference.inMinutes < 1) return 'Just now';
       if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
       if (difference.inHours < 24) return '${difference.inHours}h ago';
@@ -330,7 +343,8 @@ class _FeedScreenState extends State<FeedScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const CreatePostFinalScreen()),
+                      builder: (_) => const CreatePostFinalScreen(),
+                    ),
                   ).then((result) {
                     // Always refresh when returning from create post
                     _loadPosts();
@@ -368,7 +382,8 @@ class _FeedScreenState extends State<FeedScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const CreateCommunityScreen()),
+                      builder: (_) => const CreateCommunityScreen(),
+                    ),
                   ).then((result) {
                     if (result == true) {
                       _loadPosts(); // Refresh feed after community creation
@@ -475,7 +490,8 @@ class _FeedScreenState extends State<FeedScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const GroupsScreen()), // ✅ fixed
+                      builder: (_) => const GroupsScreen(),
+                    ), // ✅ fixed
                   );
                 },
               ),
@@ -559,7 +575,8 @@ class _FeedScreenState extends State<FeedScreen> {
                 onTap: () {
                   Navigator.pop(context); // close the drawer
                   showDialog(
-                    context: this.context, // explicitly use the StatefulWidget's context
+                    context: this
+                        .context, // explicitly use the StatefulWidget's context
                     builder: (dialogCtx) => AlertDialog(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -608,7 +625,9 @@ class _FeedScreenState extends State<FeedScreen> {
                               if (!mounted) return;
                               Navigator.pushAndRemoveUntil(
                                 this.context,
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
                                 (route) => false,
                               );
                             } catch (e) {
@@ -623,7 +642,9 @@ class _FeedScreenState extends State<FeedScreen> {
                               );
                               Navigator.pushAndRemoveUntil(
                                 this.context,
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
                                 (route) => false,
                               );
                             }
@@ -728,8 +749,27 @@ class _FeedScreenState extends State<FeedScreen> {
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => NotificationsScreen()),
+                      MaterialPageRoute(builder: (_) => const ChatListScreen()),
+                    ),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => NotificationsScreen()),
                     ),
                     child: Stack(
                       children: [
@@ -785,10 +825,13 @@ class _FeedScreenState extends State<FeedScreen> {
                         slivers: [
                           SliverToBoxAdapter(
                             child: SizedBox(
-                              height: 100, // Increased from 90 to prevent overflow
+                              height:
+                                  100, // Increased from 90 to prevent overflow
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
                                 itemCount: stories.length,
                                 itemBuilder: (context, index) =>
                                     StoryItem(story: stories[index]),
@@ -803,28 +846,28 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                           ),
                           SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                if ((index + 1) % (adInterval + 1) == 0) {
-                                  return _buildAdCard();
-                                }
-                                final postIndex =
-                                    index - (index ~/ (adInterval + 1));
-                                if (postIndex >= posts.length) return null;
-                                final post = posts[postIndex];
-                                return PostItem(
-                                  key: ValueKey(post.id),
-                                  post: post,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(post),
-                                  onShare: () => _handleShare(post),
-                                  onDelete: () => _deletePost(post.id),
-                                  onReaction: () => _handleReaction(post.id),
-                                  onRepost: () => _handleRepost(post.id),
-                                );
-                              },
-                              childCount: totalItems,
-                            ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              if ((index + 1) % (adInterval + 1) == 0) {
+                                return _buildAdCard();
+                              }
+                              final postIndex =
+                                  index - (index ~/ (adInterval + 1));
+                              if (postIndex >= posts.length) return null;
+                              final post = posts[postIndex];
+                              return PostItem(
+                                key: ValueKey(post.id),
+                                post: post,
+                                onLike: () => _handleLike(post.id),
+                                onComment: () => _handleComment(post),
+                                onShare: () => _handleShare(post),
+                                onDelete: () => _deletePost(post.id),
+                                onReaction: () => _handleReaction(post.id),
+                                onRepost: () => _handleRepost(post.id),
+                              );
+                            }, childCount: totalItems),
                           ),
                         ],
                       ),
@@ -843,37 +886,37 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildAdCard() => Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F2FF),
+    margin: const EdgeInsets.symmetric(vertical: 12),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF1F2FF),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Sponsored",
+          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
           borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            "https://picsum.photos/800/400?random=999",
+            height: 200,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Sponsored",
-              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                "https://picsum.photos/800/400?random=999",
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Grow your business with us ",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-          ],
+        const SizedBox(height: 8),
+        const Text(
+          "Grow your business with us ",
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
-      );
+      ],
+    ),
+  );
 
   // NOTIFICATION INTEGRATION START
   Future<void> _addNotification({
@@ -882,7 +925,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }) async {
     try {
       final database = Database();
-      
+
       final response = await database.getData({
         'action': 'add_notification',
         'notification_type': type,
@@ -890,7 +933,7 @@ class _FeedScreenState extends State<FeedScreen> {
         'sender_id': _vendorId, // ✅ Dynamic vendor ID
         'vendor_id': _vendorId, // ✅ Dynamic vendor ID
       });
-      
+
       print("Notification added: $response");
     } catch (e) {
       print("Notification error: $e");
@@ -1050,18 +1093,18 @@ class _FeedScreenState extends State<FeedScreen> {
     return GestureDetector(
       onTap: () async {
         Navigator.pop(context);
-        
+
         try {
           final database = Database();
-          
+
           final response = await database.getData({
             'action': 'post_engagement',
             'post_id': postId,
             'engagement_type': 'reaction',
             'reaction_value': emoji,
-                        'vendor_id': _vendorId, // ✅ Dynamic vendor ID
+            'vendor_id': _vendorId, // ✅ Dynamic vendor ID
           });
-          
+
           if (response['success'] == true || response['status'] == 200) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1104,10 +1147,7 @@ class _FeedScreenState extends State<FeedScreen> {
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          emoji,
-          style: const TextStyle(fontSize: 24),
-        ),
+        child: Text(emoji, style: const TextStyle(fontSize: 24)),
       ),
     );
   }
@@ -1115,14 +1155,14 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<void> _handleRepost(String postId) async {
     try {
       final database = Database();
-      
+
       final response = await database.getData({
         'action': 'post_engagement',
         'post_id': postId,
         'engagement_type': 'repost',
-                    'vendor_id': _vendorId, // ✅ Dynamic vendor ID
+        'vendor_id': _vendorId, // ✅ Dynamic vendor ID
       });
-      
+
       if (response['success'] == true || response['status'] == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1161,353 +1201,185 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _handleComment(Post post) => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setModalState) =>
-              _buildCommentSheet(post, setModalState),
-        ),
-      );
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) =>
+          _buildCommentSheet(post, setModalState),
+    ),
+  );
 
-  Widget _buildCommentSheet(Post post, StateSetter setModalState) =>
-      Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+  Widget _buildCommentSheet(Post post, StateSetter setModalState) => Container(
+    height: MediaQuery.of(context).size.height * 0.75,
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(20),
+        topRight: Radius.circular(20),
+      ),
+    ),
+    child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Color(0xFFE6E6F0), width: 0.5),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SizedBox(width: 40),
+              const Text(
+                'Comments',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
         ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFE6E6F0), width: 0.5),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 40),
-                  const Text(
-                    'Comments',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+        Expanded(
+          child: post.commentsList.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No comments yet.\nBe the first to comment!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.black),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: post.commentsList.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No comments yet.\nBe the first to comment!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: Color(0xFF6B7280), fontSize: 14),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: post.commentsList.length,
-                      itemBuilder: (context, index) {
-                        final comment = post.commentsList[index];
-                        return _buildCommentItem(
-                          username: comment.username,
-                          comment: comment.text,
-                          timeAgo: comment.timeAgo,
-                          likes: comment.likes,
-                        );
-                      },
-                    ),
-            ),
-            Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: Color(0xFFE6E6F0), width: 0.5),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: post.commentsList.length,
+                  itemBuilder: (context, index) {
+                    final comment = post.commentsList[index];
+                    return _buildCommentItem(
+                      username: comment.username,
+                      comment: comment.text,
+                      timeAgo: comment.timeAgo,
+                      likes: comment.likes,
+                    );
+                  },
                 ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundImage: NetworkImage(
-                          'https://picsum.photos/100/100?random=99',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _commentController,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: const InputDecoration(
-                            hintText: 'Add a comment...',
-                            hintStyle:
-                                TextStyle(color: Color(0xFF6B7280)),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final text = _commentController.text.trim();
-                          if (text.isEmpty) return;
-                          
-                          final postIndex = posts.indexWhere(
-                            (p) => p.id == post.id,
-                          );
-                          if (postIndex == -1) return;
-                          
-                          // Optimistic UI update
-                          final newComment = Comment(
-                            username: 'current_user',
-                            userImage:
-                                'https://picsum.photos/100/100?random=99',
-                            text: text,
-                            timeAgo: 'Just now',
-                            likes: 0,
-                          );
-                          
-                          setState(() {
-                            posts[postIndex].addComment(newComment);
-                          });
-                          _commentController.clear();
-                          setModalState(() {});
-                          
-                          try {
-                            final database = Database();
-                            
-                            final response = await database.getData({
-                              'action': 'add_comment',
-                              'post_id': post.id,
-                              'message': text,
-                                          'vendor_id': _vendorId, // ✅ Dynamic vendor ID
-                            });
-                            
-                            if (response['success'] != true && response['status'] != 200) {
-                              // Revert optimistic update on failure
-                              setState(() {
-                                posts[postIndex].commentsList.remove(newComment);
-                                posts[postIndex] = Post(
-                                  id: posts[postIndex].id,
-                                  username: posts[postIndex].username,
-                                  userImage: posts[postIndex].userImage,
-                                  isVerified: posts[postIndex].isVerified,
-                                  postImages: posts[postIndex].postImages,
-                                  likes: posts[postIndex].likes,
-                                  caption: posts[postIndex].caption,
-                                  timeAgo: posts[postIndex].timeAgo,
-                                  comments: posts[postIndex].comments - 1,
-                                  shares: posts[postIndex].shares,
-                                  isLiked: posts[postIndex].isLiked,
-                                  isBookmarked: posts[postIndex].isBookmarked,
-                                  commentsList: posts[postIndex].commentsList,
-                                );
-                              });
-                              setModalState(() {});
-                              
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Failed to post comment'),
-                                  backgroundColor: Colors.red,
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            } else {
-                              _addNotification(
-                                type: "comment",
-                                title: "$_userName commented on ${post.username}'s post",
-                              );
-                            }
-                          } catch (e) {
-                            print('Error adding comment: $e');
-                            // Revert optimistic update on error
-                            setState(() {
-                              posts[postIndex].commentsList.remove(newComment);
-                              posts[postIndex] = Post(
-                                id: posts[postIndex].id,
-                                username: posts[postIndex].username,
-                                userImage: posts[postIndex].userImage,
-                                isVerified: posts[postIndex].isVerified,
-                                postImages: posts[postIndex].postImages,
-                                likes: posts[postIndex].likes,
-                                caption: posts[postIndex].caption,
-                                timeAgo: posts[postIndex].timeAgo,
-                                comments: posts[postIndex].comments - 1,
-                                shares: posts[postIndex].shares,
-                                isLiked: posts[postIndex].isLiked,
-                                isBookmarked: posts[postIndex].isBookmarked,
-                                commentsList: posts[postIndex].commentsList,
-                              );
-                            });
-                            setModalState(() {});
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Error posting comment'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text("Post"),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-      );
-
-  Widget _buildCommentItem({
-    required String username,
-    required String comment,
-    required String timeAgo,
-    required int likes,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: NetworkImage(
-                'https://picsum.photos/100/100?random=${username.hashCode}',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: username,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const TextSpan(text: ' '),
-                        TextSpan(
-                          text: comment,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(timeAgo,
-                          style: const TextStyle(
-                              color: Color(0xFF6B7280), fontSize: 12)),
-                      const SizedBox(width: 16),
-                      Text('$likes likes',
-                          style: const TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 16),
-                      const Text('Reply',
-                          style: TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.favorite_border,
-                  size: 14, color: Color(0xFF6B7280)),
-              onPressed: () {},
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
-        ),
-      );
-
-  void _handleShare(Post post) => showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (context) => Container(
+        Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+            border: Border(
+              top: BorderSide(color: Color(0xFFE6E6F0), width: 0.5),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6B7280),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Share',
-                    style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600)),
-              ),
-              InkWell(
-                onTap: () async {
-                  Navigator.pop(context);
-                  
-                  try {
-                    final database = Database();
-                    
-                    final response = await database.getData({
-                      'action': 'post_engagement',
-                      'post_id': post.id,
-                      'engagement_type': 'share',
-                                  'vendor_id': _vendorId, // ✅ Dynamic vendor ID
-                    });
-                    
-                    if (response['success'] == true || response['status'] == 200) {
-                      // Update share count optimistically
-                      final postIndex = posts.indexWhere((p) => p.id == post.id);
-                      if (postIndex != -1) {
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 18,
+                    backgroundImage: NetworkImage(
+                      'https://picsum.photos/100/100?random=99',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: const InputDecoration(
+                        hintText: 'Add a comment...',
+                        hintStyle: TextStyle(color: Color(0xFF6B7280)),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final text = _commentController.text.trim();
+                      if (text.isEmpty) return;
+
+                      final postIndex = posts.indexWhere(
+                        (p) => p.id == post.id,
+                      );
+                      if (postIndex == -1) return;
+
+                      // Optimistic UI update
+                      final newComment = Comment(
+                        username: 'current_user',
+                        userImage: 'https://picsum.photos/100/100?random=99',
+                        text: text,
+                        timeAgo: 'Just now',
+                        likes: 0,
+                      );
+
+                      setState(() {
+                        posts[postIndex].addComment(newComment);
+                      });
+                      _commentController.clear();
+                      setModalState(() {});
+
+                      try {
+                        final database = Database();
+
+                        final response = await database.getData({
+                          'action': 'add_comment',
+                          'post_id': post.id,
+                          'message': text,
+                          'vendor_id': _vendorId, // ✅ Dynamic vendor ID
+                        });
+
+                        if (response['success'] != true &&
+                            response['status'] != 200) {
+                          // Revert optimistic update on failure
+                          setState(() {
+                            posts[postIndex].commentsList.remove(newComment);
+                            posts[postIndex] = Post(
+                              id: posts[postIndex].id,
+                              username: posts[postIndex].username,
+                              userImage: posts[postIndex].userImage,
+                              isVerified: posts[postIndex].isVerified,
+                              postImages: posts[postIndex].postImages,
+                              likes: posts[postIndex].likes,
+                              caption: posts[postIndex].caption,
+                              timeAgo: posts[postIndex].timeAgo,
+                              comments: posts[postIndex].comments - 1,
+                              shares: posts[postIndex].shares,
+                              isLiked: posts[postIndex].isLiked,
+                              isBookmarked: posts[postIndex].isBookmarked,
+                              commentsList: posts[postIndex].commentsList,
+                            );
+                          });
+                          setModalState(() {});
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to post comment'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        } else {
+                          _addNotification(
+                            type: "comment",
+                            title:
+                                "$_userName commented on ${post.username}'s post",
+                          );
+                        }
+                      } catch (e) {
+                        print('Error adding comment: $e');
+                        // Revert optimistic update on error
                         setState(() {
+                          posts[postIndex].commentsList.remove(newComment);
                           posts[postIndex] = Post(
                             id: posts[postIndex].id,
                             username: posts[postIndex].username,
@@ -1517,82 +1389,267 @@ class _FeedScreenState extends State<FeedScreen> {
                             likes: posts[postIndex].likes,
                             caption: posts[postIndex].caption,
                             timeAgo: posts[postIndex].timeAgo,
-                            comments: posts[postIndex].comments,
-                            shares: posts[postIndex].shares + 1,
+                            comments: posts[postIndex].comments - 1,
+                            shares: posts[postIndex].shares,
                             isLiked: posts[postIndex].isLiked,
                             isBookmarked: posts[postIndex].isBookmarked,
                             commentsList: posts[postIndex].commentsList,
                           );
                         });
+                        setModalState(() {});
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Error posting comment'),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
                       }
-                      _addNotification(
-                        type: "share",
-                        title: "$_userName shared ${post.username}'s post",
-                      );
-                    }
-                  } catch (e) {
-                    print('Error sharing post: $e');
-                  }
-                  
-                  final text =
-                      '${post.username}: ${post.caption}\n${post.postImages.isNotEmpty ? post.postImages[0] : ''}';
-                  await Share.share(text);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF25D366),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(Icons.chat,
-                            color: Colors.white, size: 22),
-                      ),
-                      const SizedBox(width: 16),
-                      const Text('Share on WhatsApp',
-                          style:
-                              TextStyle(color: Colors.black, fontSize: 15)),
-                    ],
+                    },
+                    child: const Text("Post"),
                   ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildCommentItem({
+    required String username,
+    required String comment,
+    required String timeAgo,
+    required int likes,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundImage: NetworkImage(
+            'https://picsum.photos/100/100?random=${username.hashCode}',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: username,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const TextSpan(text: ' '),
+                    TextSpan(
+                      text: comment,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              _buildShareOption(Icons.send_outlined, 'Send in Direct'),
-              _buildShareOption(Icons.link, 'Copy link'),
-              _buildShareOption(Icons.share_outlined, 'Share to...'),
-              _buildShareOption(Icons.bookmark_border, 'Add to favorites'),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    timeAgo,
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    '$likes likes',
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'Reply',
+                    style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-      );
+        IconButton(
+          icon: const Icon(
+            Icons.favorite_border,
+            size: 14,
+            color: Color(0xFF6B7280),
+          ),
+          onPressed: () {},
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+      ],
+    ),
+  );
+
+  void _handleShare(Post post) => showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6B7280),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Share',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () async {
+              Navigator.pop(context);
+
+              try {
+                final database = Database();
+
+                final response = await database.getData({
+                  'action': 'post_engagement',
+                  'post_id': post.id,
+                  'engagement_type': 'share',
+                  'vendor_id': _vendorId, // ✅ Dynamic vendor ID
+                });
+
+                if (response['success'] == true || response['status'] == 200) {
+                  // Update share count optimistically
+                  final postIndex = posts.indexWhere((p) => p.id == post.id);
+                  if (postIndex != -1) {
+                    setState(() {
+                      posts[postIndex] = Post(
+                        id: posts[postIndex].id,
+                        username: posts[postIndex].username,
+                        userImage: posts[postIndex].userImage,
+                        isVerified: posts[postIndex].isVerified,
+                        postImages: posts[postIndex].postImages,
+                        likes: posts[postIndex].likes,
+                        caption: posts[postIndex].caption,
+                        timeAgo: posts[postIndex].timeAgo,
+                        comments: posts[postIndex].comments,
+                        shares: posts[postIndex].shares + 1,
+                        isLiked: posts[postIndex].isLiked,
+                        isBookmarked: posts[postIndex].isBookmarked,
+                        commentsList: posts[postIndex].commentsList,
+                      );
+                    });
+                  }
+                  _addNotification(
+                    type: "share",
+                    title: "$_userName shared ${post.username}'s post",
+                  );
+                }
+              } catch (e) {
+                print('Error sharing post: $e');
+              }
+
+              final text =
+                  '${post.username}: ${post.caption}\n${post.postImages.isNotEmpty ? post.postImages[0] : ''}';
+              await Share.share(text);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.chat,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'Share on WhatsApp',
+                    style: TextStyle(color: Colors.black, fontSize: 15),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _buildShareOption(Icons.send_outlined, 'Send in Direct'),
+          _buildShareOption(Icons.link, 'Copy link'),
+          _buildShareOption(Icons.share_outlined, 'Share to...'),
+          _buildShareOption(Icons.bookmark_border, 'Add to favorites'),
+          const SizedBox(height: 20),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildShareOption(IconData icon, String label) => InkWell(
-        onTap: () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$label clicked'),
-              duration: const Duration(seconds: 1),
-              backgroundColor: const Color(0xFF7C83FD),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.black),
-              const SizedBox(width: 16),
-              Text(label,
-                  style:
-                      const TextStyle(color: Colors.black, fontSize: 15)),
-            ],
-          ),
+    onTap: () {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label clicked'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: const Color(0xFF7C83FD),
         ),
       );
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.black),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.black, fontSize: 15),
+          ),
+        ],
+      ),
+    ),
+  );
 }
