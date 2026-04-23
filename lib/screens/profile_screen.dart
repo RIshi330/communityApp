@@ -357,8 +357,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       );
     }
-    _commentCtrl.dispose();
-    super.dispose();
   }
 
   void _confirmDelete(Post post) {
@@ -1592,6 +1590,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    _commentCtrl.dispose();
+    super.dispose();
   }
 } // Added missing closing brace for _ProfileScreenState class
 

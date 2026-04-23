@@ -1,6 +1,5 @@
 import 'package:commity_app1/screens/create_post.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
-import 'package:commity_app1/screens/shorts_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/feed_screen.dart';
 import 'screens/notification_screen.dart';
@@ -279,6 +278,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final bool isFeed = index == 0;
+    final bool isProfile = index == 4;
 
     Widget currentScreen;
     switch (index) {
@@ -293,7 +293,7 @@ class _AppShellState extends State<AppShell> {
         currentScreen = const FeedScreen();
         break;
       case 3:
-        currentScreen = ShortsScreen();
+        currentScreen = const FeedScreen();
         break;
       case 4:
         currentScreen = ProfileScreen();
@@ -319,7 +319,7 @@ class _AppShellState extends State<AppShell> {
       child: Scaffold(
         backgroundColor: Colors.white,
 
-        appBar: isFeed
+        appBar: (isFeed || isProfile)
             ? null
             : PreferredSize(
                 preferredSize: const Size.fromHeight(kToolbarHeight),

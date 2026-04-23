@@ -1,6 +1,6 @@
 import 'package:commity_app1/screens/choicescreen.dart';
 import 'package:commity_app1/screens/industries_screen.dart';
-import 'package:commity_app1/screens/loginscreen.dart';
+import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -1319,7 +1319,7 @@ class _SignOutSheet extends StatelessWidget {
                 if (!context.mounted) return;
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  MaterialPageRoute(builder: (_) => const AuthProduction()),
                   (route) => false,
                 );
               },

@@ -4,7 +4,7 @@ import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
 import 'package:commity_app1/screens/chat_screen.dart';
 import 'package:commity_app1/screens/group_screen.dart'; // fixed: groups_screen (with s)
-import 'package:commity_app1/screens/loginscreen.dart';
+import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/screens/setting_screen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +17,8 @@ import 'package:commity_app1/screens/notification_screen.dart';
 import 'package:commity_app1/screens/profile_screen.dart';
 import 'package:commity_app1/screens/product_shop/productshop_btc.dart';
 import 'package:commity_app1/screens/promotion_marketplace_screen.dart';
+import 'package:commity_app1/screens/seller_bank_accounts_screen.dart';
+import 'package:commity_app1/screens/wallet_screen.dart';
 import 'package:share_plus/share_plus.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   final TextEditingController _commentController = TextEditingController();
   bool _isLoadingPosts = false;
+  bool _paymentsExpanded = false;
 
   // ✅ User data from API (like profile screen)
   String _userName = "User";
@@ -555,6 +558,39 @@ class _FeedScreenState extends State<FeedScreen> {
                 },
               ),
               _buildDrawerItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Payments and Billing',
+                onTap: () {
+                  setState(() {
+                    _paymentsExpanded = !_paymentsExpanded;
+                  });
+                },
+              ),
+              if (_paymentsExpanded)
+                _buildSubDrawerItem(
+                  label: 'Wallet',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      this.context,
+                      MaterialPageRoute(builder: (_) => const WalletScreen()),
+                    );
+                  },
+                ),
+              if (_paymentsExpanded)
+                _buildSubDrawerItem(
+                  label: 'Bank Account',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      this.context,
+                      MaterialPageRoute(
+                        builder: (_) => const SellerBankAccountsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              _buildDrawerItem(
                 icon: Icons.auto_awesome_outlined,
                 label: 'Promotional Packages',
                 onTap: () {
@@ -626,7 +662,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               Navigator.pushAndRemoveUntil(
                                 this.context,
                                 MaterialPageRoute(
-                                  builder: (_) => const LoginScreen(),
+                                  builder: (_) => const AuthProduction(),
                                 ),
                                 (route) => false,
                               );
@@ -643,7 +679,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               Navigator.pushAndRemoveUntil(
                                 this.context,
                                 MaterialPageRoute(
-                                  builder: (_) => const LoginScreen(),
+                                  builder: (_) => const AuthProduction(),
                                 ),
                                 (route) => false,
                               );
@@ -689,6 +725,30 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      horizontalTitleGap: 8,
+    );
+  }
+
+  Widget _buildSubDrawerItem({
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.only(left: 64, right: 16),
+      title: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        color: Colors.white70,
+        size: 12,
+      ),
+      onTap: onTap,
       horizontalTitleGap: 8,
     );
   }

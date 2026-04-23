@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:commity_app1/Database/Database.dart';
-import 'package:commity_app1/screens/loginscreen.dart';
+import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
 import 'package:commity_app1/screens/choicescreen.dart';
@@ -132,11 +132,11 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
       } else {
         // No valid session - go to login
         print('🔑 No valid session → Login');
-        _navigateTo(const LoginScreen());
+        _navigateTo(const AuthProduction());
       }
     } catch (e) {
       print('❌ Session check error: $e');
-      _navigateTo(const LoginScreen());
+      _navigateTo(const AuthProduction());
     }
   }
 
