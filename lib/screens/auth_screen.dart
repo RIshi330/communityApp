@@ -15,6 +15,8 @@ enum SignUpMethod { full, otpOnly }
 
 enum OtpFlow { signUp, signInOtp }
 
+enum LoginRole { normalUser, businessUser, admin }
+
 class AuthProduction extends StatefulWidget {
   const AuthProduction({super.key});
 
@@ -44,6 +46,7 @@ class _AuthProductionState extends State<AuthProduction> {
   SignInMethod _signInMethod = SignInMethod.password;
   SignUpMethod _signUpMethod = SignUpMethod.full;
   OtpFlow? _otpFlow;
+  LoginRole _loginRole = LoginRole.normalUser;
 
   bool _loading = false;
   bool _obscurePassword = true;
@@ -53,6 +56,27 @@ class _AuthProductionState extends State<AuthProduction> {
   Timer? _timer;
 
   int _selectedVendorType = 500;
+
+  bool get _isAdminRole => _loginRole == LoginRole.admin;
+
+  void _selectLoginRole(LoginRole role) {
+    setState(() {
+      _loginRole = role;
+      _otpSent = false;
+      _otpFlow = null;
+      for (final c in _otpCtrls) {
+        c.clear();
+      }
+
+      if (role == LoginRole.admin) {
+        _signInMethod = SignInMethod.admin;
+        _selectedVendorType = 1;
+      } else {
+        _signInMethod = SignInMethod.password;
+        _selectedVendorType = role == LoginRole.businessUser ? 20 : 500;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -78,7 +102,7 @@ class _AuthProductionState extends State<AuthProduction> {
 
   void _startResendTimer() {
     _timer?.cancel();
-    setState(() => _resendIn = 30);
+    setState(() => _resendIn = 120);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       if (_resendIn <= 1) {
@@ -526,6 +550,36 @@ class _AuthProductionState extends State<AuthProduction> {
     );
   }
 
+  String _formatCountdown(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  String _maskedOtpTarget() {
+    final target = _otpTargetEmail.trim();
+    if (target.isEmpty) {
+      return '+1 (555) *** **89';
+    }
+
+    if (target.contains('@')) {
+      final parts = target.split('@');
+      final local = parts.first;
+      final domain = parts.length > 1 ? parts[1] : '';
+      if (local.length <= 2) {
+        return '${local[0]}***@$domain';
+      }
+      final start = local.substring(0, 2);
+      return '$start***@$domain';
+    }
+
+    final digits = target.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 4) {
+      return '+* *** *** ${digits.substring(digits.length - 2)}';
+    }
+    return '***';
+  }
+
   Widget _buildTopTabs() {
     return Container(
       decoration: BoxDecoration(
@@ -595,37 +649,88 @@ class _AuthProductionState extends State<AuthProduction> {
   }
 
   Widget _buildSignInMethodSelector() {
-    return Wrap(
-      spacing: 8,
-      children: [
-        ChoiceChip(
-          label: const Text('Password'),
-          selected: _signInMethod == SignInMethod.password,
-          onSelected: (_) => setState(() {
-            _signInMethod = SignInMethod.password;
-            _otpSent = false;
-            _otpFlow = null;
-          }),
+    Widget roleButton({
+      required LoginRole role,
+      required String label,
+      required IconData icon,
+    }) {
+      final selected = _loginRole == role;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => _selectLoginRole(role),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? const Color(0xFFE6E6F0) : Colors.transparent,
+              ),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? _primary : const Color(0xFF757575),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? _primary : const Color(0xFF757575),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        ChoiceChip(
-          label: const Text('OTP'),
-          selected: _signInMethod == SignInMethod.otp,
-          onSelected: (_) => setState(() {
-            _signInMethod = SignInMethod.otp;
-            _otpSent = false;
-            _otpFlow = null;
-          }),
-        ),
-        ChoiceChip(
-          label: const Text('Admin'),
-          selected: _signInMethod == SignInMethod.admin,
-          onSelected: (_) => setState(() {
-            _signInMethod = SignInMethod.admin;
-            _otpSent = false;
-            _otpFlow = null;
-          }),
-        ),
-      ],
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F2FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6E6F0)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          roleButton(
+            role: LoginRole.normalUser,
+            label: 'Normal User',
+            icon: Icons.person_outline,
+          ),
+          const SizedBox(width: 4),
+          roleButton(
+            role: LoginRole.businessUser,
+            label: 'Business User',
+            icon: Icons.business_outlined,
+          ),
+          const SizedBox(width: 4),
+          roleButton(
+            role: LoginRole.admin,
+            label: 'Admin',
+            icon: Icons.admin_panel_settings_outlined,
+          ),
+        ],
+      ),
     );
   }
 
@@ -649,13 +754,52 @@ class _AuthProductionState extends State<AuthProduction> {
     );
   }
 
-  Widget _buildSignInContent() {
-    final useOtp = _signInMethod == SignInMethod.otp;
+  Widget _buildOtpVerificationScreen() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Row(
+          children: [
+            IconButton(
+              onPressed: _loading
+                  ? null
+                  : () {
+                      setState(() {
+                        _otpSent = false;
+                        for (final c in _otpCtrls) {
+                          c.clear();
+                        }
+                      });
+                    },
+              icon: const Icon(Icons.arrow_back, color: _primary),
+            ),
+            const Expanded(
+              child: Text(
+                'Community Hub',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: _text,
+                ),
+              ),
+            ),
+            const SizedBox(width: 48),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Container(
+          width: 96,
+          height: 96,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F2FF),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.lock_open_rounded, color: _primary, size: 50),
+        ),
+        const SizedBox(height: 22),
         const Text(
-          'Welcome Back',
+          'Verification Code',
           style: TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.w800,
@@ -663,9 +807,153 @@ class _AuthProductionState extends State<AuthProduction> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Sign in to continue',
-          style: TextStyle(color: Color(0xFF757575)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Text(
+            'Please enter the 6-digit verification code sent to ${_maskedOtpTarget()}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.4,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildOtpBoxes(),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.schedule_outlined,
+              size: 16,
+              color: Color(0xFF6B7280),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _resendIn > 0
+                  ? 'Resend code in ${_formatCountdown(_resendIn)}'
+                  : 'You can resend the code now',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: (_resendIn == 0 && !_loading) ? _resendOtp : null,
+          child: const Text(
+            'Resend via SMS',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _loading ? null : _verifyOtpForLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Verify Identity',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: _loading
+                ? null
+                : () {
+                    setState(() {
+                      _otpSent = false;
+                      _signInMethod = SignInMethod.password;
+                      for (final c in _otpCtrls) {
+                        c.clear();
+                      }
+                    });
+                  },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0x33474DC5)),
+              backgroundColor: const Color(0xFFF1F2FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              'Try another method',
+              style: TextStyle(color: _primary, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignInContent() {
+    final useOtp = _signInMethod == SignInMethod.otp;
+    final canUseOtp = !_isAdminRole;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            width: 78,
+            height: 78,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F2FF),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE6E6F0)),
+            ),
+            child: const Icon(
+              Icons.lock_open_rounded,
+              color: _primary,
+              size: 38,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Center(
+          child: Text(
+            'Welcome back',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: _text,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: Text(
+            _isAdminRole
+                ? 'Sign in to continue as admin'
+                : 'Join your community conversations today',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF757575)),
+          ),
         ),
         const SizedBox(height: 18),
         _buildSignInMethodSelector(),
@@ -674,8 +962,8 @@ class _AuthProductionState extends State<AuthProduction> {
           controller: _email,
           keyboardType: TextInputType.emailAddress,
           decoration: _input(
-            _signInMethod == SignInMethod.admin ? 'Admin Email' : 'Email',
-            icon: Icons.email_outlined,
+            _isAdminRole ? 'Admin Email' : 'Username or Email',
+            icon: Icons.person_outline,
           ),
         ),
         const SizedBox(height: 12),
@@ -695,20 +983,6 @@ class _AuthProductionState extends State<AuthProduction> {
               ),
             ),
           ),
-        if (useOtp && _otpSent) ...[
-          const SizedBox(height: 12),
-          _buildOtpBoxes(),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _resendIn == 0 ? _resendOtp : null,
-              child: Text(
-                _resendIn == 0 ? 'Resend OTP' : 'Resend in ${_resendIn}s',
-              ),
-            ),
-          ),
-        ],
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
@@ -748,6 +1022,69 @@ class _AuthProductionState extends State<AuthProduction> {
                   ),
           ),
         ),
+        if (canUseOtp) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: const [
+              Expanded(child: Divider(color: Color(0xFFE6E6F0))),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('OR', style: TextStyle(color: Color(0xFF757575))),
+              ),
+              Expanded(child: Divider(color: Color(0xFFE6E6F0))),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: _loading
+                  ? null
+                  : () {
+                      setState(() {
+                        _signInMethod = SignInMethod.otp;
+                        _otpSent = false;
+                        _otpFlow = null;
+                        for (final c in _otpCtrls) {
+                          c.clear();
+                        }
+                      });
+                    },
+              icon: const Icon(Icons.phonelink_lock_outlined, color: _primary),
+              label: Text(
+                useOtp ? 'Using OTP Sign In' : 'Sign In with OTP',
+                style: const TextStyle(
+                  color: _primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x33474DC5)),
+                backgroundColor: const Color(0xFFF1F2FF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 14),
+        if (!_isAdminRole)
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _selectLoginRole(LoginRole.admin),
+              icon: const Icon(
+                Icons.admin_panel_settings_outlined,
+                size: 18,
+                color: _primary,
+              ),
+              label: const Text(
+                'Sign in as Admin',
+                style: TextStyle(color: _primary, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -780,7 +1117,7 @@ class _AuthProductionState extends State<AuthProduction> {
 
   Widget _buildTypeSelector() {
     return DropdownButtonFormField<int>(
-      value: _selectedVendorType,
+      initialValue: _selectedVendorType,
       decoration: _input('Type', icon: Icons.badge_outlined),
       items: const [
         DropdownMenuItem(value: 500, child: Text('User (500)')),
@@ -906,6 +1243,11 @@ class _AuthProductionState extends State<AuthProduction> {
 
   @override
   Widget build(BuildContext context) {
+    final showOtpVerification =
+        _authMode == AuthMode.signIn &&
+        _signInMethod == SignInMethod.otp &&
+        _otpSent;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FF),
       body: SafeArea(
@@ -920,7 +1262,7 @@ class _AuthProductionState extends State<AuthProduction> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: _primary.withOpacity(0.12),
+                    color: _primary.withValues(alpha: 0.12),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
@@ -929,11 +1271,15 @@ class _AuthProductionState extends State<AuthProduction> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTopTabs(),
-                  const SizedBox(height: 18),
+                  if (!showOtpVerification) ...[
+                    _buildTopTabs(),
+                    const SizedBox(height: 18),
+                  ],
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 220),
-                    child: _authMode == AuthMode.signIn
+                    child: showOtpVerification
+                        ? _buildOtpVerificationScreen()
+                        : _authMode == AuthMode.signIn
                         ? _buildSignInContent()
                         : _buildSignUpContent(),
                   ),

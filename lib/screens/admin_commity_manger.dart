@@ -1,6 +1,5 @@
 import 'package:commity_app1/screens/commity_admin.dart';
 import 'package:commity_app1/screens/commity_package_list.dart';
-import 'package:commity_app1/screens/commitycreation.dart';
 import 'package:commity_app1/screens/create_community_screen.dart'
     hide InviteMembersScreen;
 import 'package:commity_app1/screens/feed_screen.dart';
@@ -75,8 +74,8 @@ class _AdminCommunityManagerScreenState
                   ),
                   decoration: BoxDecoration(
                     color: isPrivate
-                        ? Colors.orange.withOpacity(0.85)
-                        : Colors.green.withOpacity(0.85),
+                        ? Colors.orange.withValues(alpha: 0.85)
+                        : Colors.green.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
@@ -205,7 +204,7 @@ class _AdminCommunityManagerScreenState
             toggle: () =>
                 setState(() => monetizationExpanded = !monetizationExpanded),
             children: [
-              _subTile("Create Packages", const PackageCreationScreen()),
+              _subTile("Create Package", const PackageOrdersScreen()),
               _subTile("Package Orders", const PackageOrdersScreen()),
             ],
           ),

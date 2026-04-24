@@ -409,25 +409,31 @@ class _FeedScreenState extends State<FeedScreen> {
       barrierLabel: '',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, __, ___) => const SizedBox(),
-      transitionBuilder: (context, animation, _, __) {
+      pageBuilder: (context, _, __) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: _buildSideMenu(dialogContext, setDialogState),
+            );
+          },
+        );
+      },
+      transitionBuilder: (context, animation, _, child) {
         final slide = Tween<Offset>(
           begin: const Offset(-1, 0),
           end: Offset.zero,
         ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
 
-        return SlideTransition(
-          position: slide,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _buildSideMenu(context),
-          ),
-        );
+        return SlideTransition(position: slide, child: child);
       },
     );
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(
+    BuildContext context,
+    void Function(VoidCallback fn) setDialogState,
+  ) {
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -561,7 +567,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'Payments and Billing',
                 onTap: () {
-                  setState(() {
+                  setDialogState(() {
                     _paymentsExpanded = !_paymentsExpanded;
                   });
                 },

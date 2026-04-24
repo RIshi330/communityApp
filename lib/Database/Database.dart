@@ -186,6 +186,77 @@ class Database {
     return result;
   }
 
+  /// Send API requests as JSON for endpoints that expect nested objects/arrays.
+  Future<Map> postJsonData(Map<String, dynamic> postBody) async {
+    var result = {};
+
+    final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
+    final existingSessionId = await storage.read(key: "SESSION_ID");
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(postBody),
+        headers: {
+          'APP_ID': appId.toString(),
+          'SESSION_ID': existingSessionId?.toString() ?? '',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+
+      final copy = response.body;
+      print('RAW JSON RESPONSE BODY: "$copy"');
+      print('RESPONSE STATUS CODE: ${response.statusCode}');
+      print('RESPONSE HEADERS: ${response.headers}');
+
+      if (copy.isEmpty) {
+        result = {
+          "status": 300,
+          "error": "Server returned empty response",
+          "debug_info": {
+            "status_code": response.statusCode,
+            "headers": response.headers.toString(),
+          },
+        };
+      } else {
+        try {
+          final decodedResponse = jsonDecode(copy);
+
+          if (decodedResponse is Map) {
+            result = Map<String, dynamic>.from(decodedResponse);
+          } else if (decodedResponse is List) {
+            result = {'success': true, 'data': decodedResponse, 'status': 200};
+          } else {
+            result = decodedResponse;
+          }
+        } catch (jsonError) {
+          result = {
+            "status": 300,
+            "error": "Invalid JSON response from server",
+            "raw_response": copy,
+            "json_error": jsonError.toString(),
+            "debug_info": {
+              "status_code": response.statusCode,
+              "headers": response.headers.toString(),
+            },
+          };
+        }
+      }
+    } catch (e) {
+      result = {
+        "status": 300,
+        "error": "Server not reachable - ${e.toString()}",
+        "debug_info": {
+          "base_url": apiUrl,
+          "error_type": e.runtimeType.toString(),
+          "error_message": e.toString(),
+        },
+      };
+    }
+
+    return result;
+  }
+
   /// Get current session ID
   Future<String?> getSessionId() async {
     final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
