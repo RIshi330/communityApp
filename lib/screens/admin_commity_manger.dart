@@ -1,9 +1,9 @@
 import 'package:commity_app1/screens/commity_admin.dart';
-import 'package:commity_app1/screens/commity_package_list.dart';
 import 'package:commity_app1/screens/create_community_screen.dart'
     hide InviteMembersScreen;
 import 'package:commity_app1/screens/feed_screen.dart';
 import 'package:commity_app1/screens/invite_member_screen.dart';
+import 'package:commity_app1/screens/promotion/package_manage.dart';
 import 'package:commity_app1/screens/promation_engine.dart';
 import 'package:commity_app1/screens/promationschedular.dart';
 import 'package:commity_app1/screens/wallet_screen.dart';
@@ -204,8 +204,8 @@ class _AdminCommunityManagerScreenState
             toggle: () =>
                 setState(() => monetizationExpanded = !monetizationExpanded),
             children: [
-              _subTile("Create Package", const PackageOrdersScreen()),
-              _subTile("Package Orders", const PackageOrdersScreen()),
+              _subTile("Manage Package", const ManagePackagesScreen()),
+              _subTile("Package Orders", const ManagePackagesScreen()),
             ],
           ),
 

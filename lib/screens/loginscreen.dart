@@ -1,4 +1,5 @@
 import 'package:commity_app1/Database/Database.dart';
+import 'package:commity_app1/screens/admin/Community_Admin_Dashboard.dart';
 import 'package:commity_app1/screens/choicescreen.dart';
 import 'package:commity_app1/screens/signupscreen.dart';
 import 'package:commity_app1/services/auth_service.dart';
@@ -168,6 +169,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _openAdminDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+    );
   }
 
   /// ✅ Request location permission in background after login
@@ -373,6 +381,33 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: white,
                               ),
                             ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _openAdminDashboard,
+                      style: TextButton.styleFrom(
+                        foregroundColor: lavender,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.admin_panel_settings_outlined,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        'Temp Admin',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
 

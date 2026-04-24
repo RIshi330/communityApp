@@ -1,4 +1,4 @@
-import 'package:commity_app1/screens/splash_screen.dart';
+import 'package:commity_app1/screens/splash_screen.dart' hide AppTheme;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -29,7 +29,7 @@ class App extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: const [Locale('en', 'US')],
-      home: const CommitySplashScreen(), //  Splash 
+      home: const AnimatedSplashScreen(), //  Splash
     );
   }
 }

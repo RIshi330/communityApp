@@ -1,180 +1,254 @@
 import 'dart:async';
-import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:commity_app1/Database/Database.dart';
+
 import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
-import 'package:commity_app1/screens/choicescreen.dart';
+import 'package:flutter/material.dart';
 
-class CommitySplashScreen extends StatefulWidget {
-  const CommitySplashScreen({Key? key}) : super(key: key);
-
-  @override
-  _CommitySplashScreenState createState() => _CommitySplashScreenState();
+void main() {
+  runApp(const CommUnityApp());
 }
 
-class _CommitySplashScreenState extends State<CommitySplashScreen>
+class CommUnityApp extends StatelessWidget {
+  const CommUnityApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'comm-Unity',
+      theme: AppTheme.theme,
+      home: const AnimatedSplashScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class AppTheme {
+  static const Color primary = Color(0xFF7C83FD);
+  static const Color backgroundStart = Color(0xFFF9F9FF);
+  static const Color backgroundEnd = Color(0xFFE8EAF6);
+  static const Color textMain = Color(0xFF1F2937);
+  static const Color textMuted = Color(0xFF6B7280);
+
+  static ThemeData get theme {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(seedColor: primary, primary: primary),
+      fontFamily: 'Manrope',
+    );
+  }
+}
+
+class AnimatedSplashScreen extends StatefulWidget {
+  const AnimatedSplashScreen({super.key});
+
+  @override
+  State<AnimatedSplashScreen> createState() => _AnimatedSplashScreenState();
+}
+
+class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _orbitAnimation;
-
-  final List<IconData> _icons = [
-    Icons.music_note,
-    Icons.computer,
-    Icons.flight,
-    Icons.videogame_asset,
-    Icons.fitness_center,
-    Icons.book,
-    Icons.brush,
-    Icons.camera_alt,
-    Icons.group,
-    Icons.event,
-  ];
-  final List<String> _texts = ['Connect', 'Explore', 'Grow Together'];
-
-  bool _showLogo = false;
-  bool _endingAnimation = false;
-  bool _endingSequenceStarted = false;
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  double _progress = 0.0;
+  Timer? _timer;
+  Timer? _redirectTimer;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5),
+      duration: const Duration(milliseconds: 1500),
     );
-    _orbitAnimation = Tween<double>(begin: 0, end: 2 * pi).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.linear),
-    );
-    _animationController.forward();
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+
+    _controller.forward();
+    _startLoading();
+    _scheduleRedirect();
+  }
+
+  void _startLoading() {
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      setState(() {
+        if (_progress < 1.0) {
+          _progress += 0.01;
+        } else {
+          _timer?.cancel();
+        }
+      });
+    });
+  }
+
+  void _scheduleRedirect() {
+    _redirectTimer = Timer(const Duration(seconds: 3), _redirectNextScreen);
+  }
+
+  Future<void> _redirectNextScreen() async {
+    final hasValidSession = await AuthService.isSessionValid();
+    if (!mounted) return;
+
+    final nextScreen = hasValidSession
+        ? const AppShell()
+        : const AuthProduction();
+
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => nextScreen));
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
+    _timer?.cancel();
+    _redirectTimer?.cancel();
     super.dispose();
-  }
-
-  void _navigateTo(Widget page) {
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => page),
-      (route) => false,
-    );
-  }
-
-  /// If local interest flag is missing, verify from API and cache it.
-  Future<bool> _resolveHasInterests(int vendorId) async {
-    final localHasInterests = await AuthService.hasSelectedInterests();
-    if (localHasInterests) return true;
-    if (vendorId <= 0) return false;
-
-    try {
-      final database = Database();
-      final response = await database.getData({
-        'action': 'get_user_interests',
-        'vendor_id': vendorId.toString(),
-      });
-
-      if (response['success'] == true || response['status'] == 200) {
-        final data = response['data'];
-        if (data is List && data.isNotEmpty) {
-          final interestIds = data
-              .map(
-                (item) =>
-                    int.tryParse(
-                      item['interest_id']?.toString() ??
-                          item['id']?.toString() ??
-                          '0',
-                    ) ??
-                    0,
-              )
-              .where((id) => id > 0)
-              .toList();
-
-          if (interestIds.isNotEmpty) {
-            await AuthService.saveUserInterests(interestIds);
-            return true;
-          }
-        }
-      }
-    } catch (e) {
-      print('Interest verification error on splash: $e');
-    }
-
-    return false;
-  }
-
-  /// ✅ Check for existing 30-day session and decide navigation
-  Future<void> _checkSessionAndNavigate() async {
-    try {
-      final isValid = await AuthService.isSessionValid();
-
-      if (isValid) {
-        final vendorId = await AuthService.getVendorId() ?? 0;
-        final hasInterests = await _resolveHasInterests(vendorId);
-
-        if (hasInterests) {
-          // User has interests selected - go directly to feed
-          print('✅ Auto-login: Session valid, interests set → Feed');
-          _navigateTo(const AppShell());
-        } else {
-          // User needs to select interests
-          print(
-            '✅ Auto-login: Session valid, no interests → Interest Selection',
-          );
-          _navigateTo(
-            TopicSelectionScreen(vendorId: vendorId, isEditing: false),
-          );
-        }
-      } else {
-        // No valid session - go to login
-        print('🔑 No valid session → Login');
-        _navigateTo(const AuthProduction());
-      }
-    } catch (e) {
-      print('❌ Session check error: $e');
-      _navigateTo(const AuthProduction());
-    }
-  }
-
-  void _startEndingSequence() {
-    if (_endingSequenceStarted) return;
-    _endingSequenceStarted = true;
-
-    setState(() => _endingAnimation = true);
-
-    _animationController.duration = const Duration(seconds: 2);
-    _animationController.forward(from: 0.6);
-
-    Timer(const Duration(milliseconds: 200), () {
-      setState(() => _showLogo = true);
-    });
-
-    // ✅ Check session instead of always going to login
-    Timer(const Duration(seconds: 3), () {
-      _checkSessionAndNavigate();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Container(
-        color: Colors.white,
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppTheme.backgroundStart, AppTheme.backgroundEnd],
+          ),
+        ),
         child: Stack(
           children: [
-            _buildParticles(),
+            // Decorative background elements
+            Positioned(
+              top: -50,
+              right: -50,
+              child: _buildBlurCircle(
+                150,
+                AppTheme.primary.withValues(alpha: 0.05),
+              ),
+            ),
+            Positioned(
+              bottom: 100,
+              left: -30,
+              child: _buildBlurCircle(
+                100,
+                AppTheme.primary.withValues(alpha: 0.08),
+              ),
+            ),
+
             Center(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo Container
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.groups_rounded,
+                          size: 50,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'comm-Unity',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textMain,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Connecting people, Businesses and Ideas',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom Section: Loading & Status
+            Positioned(
+              bottom: 60,
+              left: 40,
+              right: 40,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildOrbit(),
-                  const SizedBox(height: 20),
-                  if (_showLogo) _buildLogo() else _buildTextAnimation(),
+                  Text(
+                    'INITIALIZING...',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary.withValues(alpha: 0.7),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: _progress,
+                      backgroundColor: Colors.white,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppTheme.primary,
+                      ),
+                      minHeight: 4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildStatusItem(Icons.verified_user, 'SECURE'),
+                      const SizedBox(width: 20),
+                      _buildStatusItem(Icons.sync, 'SYNCED'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'POWERED BY COMM-UNITY TECH',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textMuted.withValues(alpha: 0.5),
+                      letterSpacing: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -184,212 +258,28 @@ class _CommitySplashScreenState extends State<CommitySplashScreen>
     );
   }
 
-  Widget _buildParticles() => IgnorePointer(
-    child: SizedBox.expand(child: CustomPaint(painter: ParticlePainter())),
-  );
-
-  Widget _buildOrbit() {
-    return SizedBox(
-      width: 200,
-      height: 100,
-      child: Stack(
-        children: [
-          if (!_showLogo)
-            CustomPaint(
-              size: const Size(200, 100),
-              painter: OrbitPathPainter(),
-            ),
-          for (int i = 0; i < _icons.length; i++)
-            Positioned(
-              child: AnimatedBuilder(
-                animation: _orbitAnimation,
-                builder: (context, child) {
-                  final angle =
-                      _orbitAnimation.value + (2 * pi * i / _icons.length);
-                  final x = 100 + 80 * cos(angle);
-                  final y = 100 - 80 * sin(angle);
-
-                  return Transform.translate(
-                    offset: Offset(x - 20, y - 120),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1e1e3c).withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6496ff).withOpacity(0.5),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(_icons[i], color: Colors.white, size: 20),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
+  Widget _buildBlurCircle(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
-  Widget _buildTextAnimation() {
-    return SizedBox(
-      height: 60,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        child: _endingAnimation
-            ? Container()
-            : DefaultTextStyle(
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 1,
-                  color: Colors.white,
-                  shadows: [Shadow(blurRadius: 10, color: Color(0xFF6496ff))],
-                ),
-                child: AnimatedTextKit(
-                  animatedTexts: _texts
-                      .map(
-                        (text) => FadeAnimatedText(
-                          text,
-                          duration: const Duration(milliseconds: 900),
-                        ),
-                      )
-                      .toList(),
-                  totalRepeatCount: 1,
-                  onFinished: _startEndingSequence,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildStatusItem(IconData icon, String label) {
+    return Row(
       children: [
+        Icon(icon, size: 12, color: AppTheme.textMuted.withValues(alpha: 0.6)),
+        const SizedBox(width: 4),
         Text(
-          'Community',
+          label,
           style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 3,
-            foreground: Paint()
-              ..shader = const LinearGradient(
-                colors: [Color(0xFF64a0ff), Color(0xFFa264ff)],
-              ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
-          ),
-        ),
-        const SizedBox(height: 10),
-        AnimatedOpacity(
-          opacity: _showLogo ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 600),
-          child: const Text(
-            'Join. Create. Grow.',
-            style: TextStyle(
-              fontSize: 16,
-              letterSpacing: 1,
-              color: Color(0xFFc8dcff),
-              shadows: [Shadow(blurRadius: 10, color: Color(0xFF6496ff))],
-            ),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textMuted.withValues(alpha: 0.6),
           ),
         ),
       ],
-    );
-  }
-}
-
-// === PAINTERS ===
-
-class OrbitPathPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF6496ff).withOpacity(0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final rect = Rect.fromCircle(
-      center: Offset(size.width / 2, 100),
-      radius: 80,
-    );
-    canvas.drawArc(rect, pi, pi, false, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class ParticlePainter extends CustomPainter {
-  final Random _random = Random();
-  final List<Particle> _particles = [];
-
-  ParticlePainter() {
-    for (int i = 0; i < 20; i++) {
-      _particles.add(Particle(_random));
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final particle in _particles) {
-      particle.update();
-      particle.draw(canvas, size);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class Particle {
-  final Random _random;
-  late double x;
-  late double y;
-  late double size;
-  late double speed;
-  late double opacity;
-  late double angle;
-
-  Particle(this._random) {
-    reset();
-  }
-
-  void reset() {
-    x = _random.nextDouble() * 100;
-    y = _random.nextDouble() * 100;
-    size = _random.nextDouble() * 3 + 1;
-    speed = _random.nextDouble() * 2 + 1;
-    opacity = _random.nextDouble() * 0.5 + 0.3;
-    angle = _random.nextDouble() * 2 * pi;
-  }
-
-  void update() {
-    x += cos(angle) * 0.5;
-    y -= speed * 0.1;
-    opacity -= 0.005;
-
-    if (opacity <= 0 || y < -10) {
-      reset();
-      y = 110;
-      opacity = _random.nextDouble() * 0.5 + 0.3;
-    }
-  }
-
-  void draw(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF6496ff).withOpacity(opacity)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-
-    canvas.drawCircle(
-      Offset(x / 100 * size.width, y / 100 * size.height),
-      this.size,
-      paint,
     );
   }
 }

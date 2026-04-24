@@ -1,5 +1,6 @@
 import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/services/auth_service.dart';
+import 'package:commity_app1/screens/promotion/promotional_package_builder.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -487,18 +488,39 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
     );
   }
 
+  Future<void> _openPackageBuilder() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PromotionalPackageBuilderScreen(),
+      ),
+    );
+  }
+
   Widget _buildSearchAndFilter() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: TextField(
                 controller: _searchController,
@@ -511,7 +533,40 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: const Icon(Icons.tune, color: AppTheme.primary, size: 20),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCreateButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton.icon(
+        onPressed: _openPackageBuilder,
+        icon: const Icon(Icons.add),
+        label: const Text(
+          'Create New Package',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
@@ -527,89 +582,91 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
       ),
       child: Column(
         children: [
-          InkWell(
-            onTap: () => _openPackageDetails(package),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              package.name,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textMain,
-                              ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            package.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textMain,
                             ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                _buildStatusBadge(package.status, statusColor),
-                                ...package.badges.map(_buildSpecialBadge),
-                                Text(
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _buildStatusBadge(package.status, statusColor),
+                              const SizedBox(width: 8),
+                              ...package.badges.map(
+                                (badge) => Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: _buildSpecialBadge(badge),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
                                   '• ${package.updatedAt}',
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: AppTheme.textMuted,
                                     fontSize: 12,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          switch (value) {
-                            case 'view':
-                              await _openPackageDetails(package);
-                              break;
-                            case 'edit':
-                              await _showActionMessage('Edit');
-                              break;
-                            case 'duplicate':
-                              await _showActionMessage('Duplicate');
-                              break;
-                            case 'pause':
-                              await _showActionMessage('Pause');
-                              break;
-                            case 'report':
-                              await _showActionMessage('Report');
-                              break;
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'view',
-                            child: Text('View details'),
+                              ),
+                            ],
                           ),
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(
-                            value: 'duplicate',
-                            child: Text('Duplicate'),
-                          ),
-                          PopupMenuItem(value: 'pause', child: Text('Pause')),
-                          PopupMenuItem(value: 'report', child: Text('Report')),
                         ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildStatsGrid(package.stats),
-                ],
-              ),
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        switch (value) {
+                          case 'view':
+                            await _openPackageDetails(package);
+                            break;
+                          case 'edit':
+                            await _showActionMessage('Edit');
+                            break;
+                          case 'duplicate':
+                            await _showActionMessage('Duplicate');
+                            break;
+                          case 'pause':
+                            await _showActionMessage('Pause');
+                            break;
+                          case 'report':
+                            await _showActionMessage('Report');
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'view',
+                          child: Text('View details'),
+                        ),
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(
+                          value: 'duplicate',
+                          child: Text('Duplicate'),
+                        ),
+                        PopupMenuItem(value: 'pause', child: Text('Pause')),
+                        PopupMenuItem(value: 'report', child: Text('Report')),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildStatsGrid(package.stats),
+              ],
             ),
           ),
           const Divider(height: 1, color: AppTheme.border),
@@ -818,12 +875,21 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
         title: const Text('Package Management'),
         actions: [
+          IconButton(
+            onPressed: () {},
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.border),
+                color: Colors.white,
+              ),
+              child: const Icon(Icons.tune, color: AppTheme.primary, size: 20),
+            ),
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(2),
@@ -843,6 +909,12 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
           const SizedBox(width: 8),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openPackageBuilder,
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: [
           _buildSearchAndFilter(),
@@ -851,13 +923,13 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
               onRefresh: _loadPackages,
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : packages.isEmpty
-                  ? ListView(
+                  : ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                       children: [
                         if (_errorMessage != null) ...[
                           Container(
+                            width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppTheme.error.withValues(alpha: 0.08),
@@ -870,103 +942,65 @@ class _ManagePackagesScreenState extends State<ManagePackagesScreen> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        const SizedBox(height: 80),
-                        const Icon(
-                          Icons.inventory_2_outlined,
-                          size: 56,
-                          color: AppTheme.textMuted,
-                        ),
-                        const SizedBox(height: 12),
                         const Text(
-                          'No promotional packages found',
-                          textAlign: TextAlign.center,
+                          'Active Campaigns',
                           style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                             color: AppTheme.textMain,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Create a package from the builder screen to see it here.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
+                        const SizedBox(height: 4),
+                        Text(
+                          'You have ${packages.length} promotional packages running this month.',
+                          style: const TextStyle(
                             color: AppTheme.textMuted,
                             fontSize: 14,
                           ),
                         ),
-                      ],
-                    )
-                  : SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_errorMessage != null) ...[
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.error.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: AppTheme.error),
-                              ),
+                        const SizedBox(height: 20),
+                        _buildCreateButton(),
+                        const SizedBox(height: 24),
+                        if (packages.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 48),
+                            alignment: Alignment.center,
+                            child: const Column(
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 56,
+                                  color: AppTheme.textMuted,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'No promotional packages found',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppTheme.textMain,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  'Create a package to see it here.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                          ],
-                          Text(
-                            'Active Campaigns',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textMain,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'You have ${packages.length} promotional packages running this month.',
-                            style: const TextStyle(
-                              color: AppTheme.textMuted,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
+                          )
+                        else
                           ...packages.map(
                             (package) => _buildPackageCard(package: package),
                           ),
-                          const SizedBox(height: 80),
-                        ],
-                      ),
+                      ],
                     ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 1,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textMuted,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
-            label: 'Packages',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:commity_app1/Database/Database.dart';
+import 'package:commity_app1/screens/admin/Community_Admin_Dashboard.dart';
 import 'package:commity_app1/screens/choicescreen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
@@ -580,6 +581,13 @@ class _AuthProductionState extends State<AuthProduction> {
     return '***';
   }
 
+  void _openTempAdminDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+    );
+  }
+
   Widget _buildTopTabs() {
     return Container(
       decoration: BoxDecoration(
@@ -1020,6 +1028,27 @@ class _AuthProductionState extends State<AuthProduction> {
                         ? (!_otpSent ? 'Send OTP' : 'Verify OTP')
                         : 'Sign In',
                   ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: _openTempAdminDashboard,
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            label: const Text(
+              'Temporary Dashboard Access',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _primary),
+              backgroundColor: const Color(0xFFF1F2FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
         ),
         if (canUseOtp) ...[
