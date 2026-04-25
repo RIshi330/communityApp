@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 import 'package:commity_app1/screens/admin/Marketplace.dart' hide AppTheme;
 
 void main() {
@@ -331,6 +332,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           child: const Icon(Icons.person_add_alt_1, color: Colors.white),
         ),
       ),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
     );
   }
 

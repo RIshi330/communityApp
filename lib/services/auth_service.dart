@@ -13,6 +13,9 @@ class AuthService {
   static const String _keyUserInterests = 'user_interests';
   static const String _keyHasSelectedInterests = 'has_selected_interests';
   static const String _keyUserLocation = 'user_location';
+  static const String _keyIsAdminLoggedIn = 'is_admin_logged_in';
+  static const String _keyAdminId = 'admin_id';
+  static const String _keyAdminEmail = 'admin_email';
 
   /// 30-day session duration in milliseconds
   static const int _sessionDurationMs = 30 * 24 * 60 * 60 * 1000;
@@ -186,6 +189,38 @@ class AuthService {
     return null;
   }
 
+  /// Save admin login session
+  static Future<void> saveAdminSession({
+    required int adminId,
+    required String email,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setBool(_keyIsAdminLoggedIn, true);
+    await prefs.setInt(_keyAdminId, adminId);
+    await prefs.setString(_keyAdminEmail, email);
+    await prefs.setInt(_keyLoginTimestamp, now);
+    await prefs.setInt(_keyLastActiveTimestamp, now);
+  }
+
+  /// Check if an admin session is active
+  static Future<bool> isAdminSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyIsAdminLoggedIn) ?? false;
+  }
+
+  /// Get stored admin ID
+  static Future<int?> getAdminId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyAdminId);
+  }
+
+  /// Get stored admin email
+  static Future<String?> getAdminEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyAdminEmail);
+  }
+
   /// Clear session (logout)
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -197,6 +232,9 @@ class AuthService {
     await prefs.remove(_keyUserInterests);
     await prefs.remove(_keyHasSelectedInterests);
     await prefs.remove(_keyUserLocation);
+    await prefs.remove(_keyIsAdminLoggedIn);
+    await prefs.remove(_keyAdminId);
+    await prefs.remove(_keyAdminEmail);
   }
 
   /// Perform logout - clears both API and local session

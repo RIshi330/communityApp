@@ -234,20 +234,51 @@ class _AuthProductionState extends State<AuthProduction> {
 
     setState(() => _loading = true);
     try {
-      final Map<String, dynamic> request = _signInMethod == SignInMethod.admin
-          ? {
-              'action': 'admin_login',
-              'email': email,
-              'password': pass,
-              'type': '1',
-            }
-          : {
-              'action': 'vendor_login',
-              'email': email,
-              'password': pass,
-              'rememberMe': 'true',
-              'vendor_type': _selectedVendorType.toString(),
-            };
+      // Admin login uses admin_login_password action from PHP API
+      // Send as JSON since the auth API reads json_decode(file_get_contents('php://input'))
+      if (_signInMethod == SignInMethod.admin) {
+        final response = await _db.postJsonData({
+          'action': 'admin_login_password',
+          'email': email,
+          'password': pass,
+        });
+
+        if (response['success'] == true || response['status'] == 200) {
+          await _showMessage('Admin login successful');
+          // Save admin session
+          final adminId = int.tryParse(
+            response['admin_id']?.toString() ??
+                response['data']?['admin_id']?.toString() ?? '0',
+          ) ?? 0;
+          await AuthService.saveAdminSession(
+            adminId: adminId,
+            email: response['email']?.toString() ?? email,
+          );
+          if (!mounted) return;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+            (route) => false,
+          );
+        } else {
+          await _showMessage(
+            response['message']?.toString() ??
+                response['error']?.toString() ??
+                'Admin login failed',
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      // Normal/Business user login
+      final Map<String, dynamic> request = {
+        'action': 'vendor_login',
+        'email': email,
+        'password': pass,
+        'rememberMe': 'true',
+        'vendor_type': _selectedVendorType.toString(),
+      };
 
       Map response = await _db.getData(request);
 
@@ -256,9 +287,7 @@ class _AuthProductionState extends State<AuthProduction> {
           'login': 'true',
           'email': email,
           'password': pass,
-          'vendor_type': _signInMethod == SignInMethod.admin
-              ? '1'
-              : _selectedVendorType.toString(),
+          'vendor_type': _selectedVendorType.toString(),
         });
 
         if (fallback['LOGIN_RESPONSE'] is Map) {
@@ -581,12 +610,7 @@ class _AuthProductionState extends State<AuthProduction> {
     return '***';
   }
 
-  void _openTempAdminDashboard() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-    );
-  }
+  // Temporary dashboard access removed — admin login now goes through proper auth
 
   Widget _buildTopTabs() {
     return Container(
@@ -1030,27 +1054,7 @@ class _AuthProductionState extends State<AuthProduction> {
                   ),
           ),
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: _openTempAdminDashboard,
-            icon: const Icon(Icons.admin_panel_settings_outlined),
-            label: const Text(
-              'Temporary Dashboard Access',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _primary),
-              backgroundColor: const Color(0xFFF1F2FF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
+        // Toggle between OTP and Email/Password sign-in
         if (canUseOtp) ...[
           const SizedBox(height: 16),
           Row(
@@ -1072,7 +1076,13 @@ class _AuthProductionState extends State<AuthProduction> {
                   ? null
                   : () {
                       setState(() {
-                        _signInMethod = SignInMethod.otp;
+                        if (useOtp) {
+                          // Switch back to password
+                          _signInMethod = SignInMethod.password;
+                        } else {
+                          // Switch to OTP
+                          _signInMethod = SignInMethod.otp;
+                        }
                         _otpSent = false;
                         _otpFlow = null;
                         for (final c in _otpCtrls) {
@@ -1080,9 +1090,12 @@ class _AuthProductionState extends State<AuthProduction> {
                         }
                       });
                     },
-              icon: const Icon(Icons.phonelink_lock_outlined, color: _primary),
+              icon: Icon(
+                useOtp ? Icons.lock_outline : Icons.phonelink_lock_outlined,
+                color: _primary,
+              ),
               label: Text(
-                useOtp ? 'Using OTP Sign In' : 'Sign In with OTP',
+                useOtp ? 'Sign In with Email & Password' : 'Sign In with OTP',
                 style: const TextStyle(
                   color: _primary,
                   fontWeight: FontWeight.w700,
@@ -1098,22 +1111,6 @@ class _AuthProductionState extends State<AuthProduction> {
             ),
           ),
         ],
-        const SizedBox(height: 14),
-        if (!_isAdminRole)
-          Center(
-            child: TextButton.icon(
-              onPressed: () => _selectLoginRole(LoginRole.admin),
-              icon: const Icon(
-                Icons.admin_panel_settings_outlined,
-                size: 18,
-                color: _primary,
-              ),
-              label: const Text(
-                'Sign in as Admin',
-                style: TextStyle(color: _primary, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
       ],
     );
   }

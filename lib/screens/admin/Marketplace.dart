@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:commity_app1/screens/admin/wallet.dart' hide AppTheme;
+import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 
 void main() {
   runApp(const MarketplaceApp());
@@ -104,7 +104,10 @@ class _MarketplacePartnersScreenState extends State<MarketplacePartnersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Marketplace'),
         actions: [
           Padding(
@@ -132,69 +135,20 @@ class _MarketplacePartnersScreenState extends State<MarketplacePartnersScreen> {
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.person_add_alt_1, color: Colors.white),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 1,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textMuted,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FinancialCenterScreen()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            label: 'Wallet',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.storefront),
-            label: 'Market',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
-            label: 'Invites',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
-        ],
-      ),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 390;
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeaderText(),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildViewToggle(),
-                ),
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(child: _buildHeaderText()),
-              const SizedBox(width: 12),
-              _buildViewToggle(),
-            ],
-          );
-        },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _buildHeaderText()),
+          const SizedBox(width: 12),
+          _buildViewToggle(),
+        ],
       ),
     );
   }
@@ -272,32 +226,62 @@ class _MarketplacePartnersScreenState extends State<MarketplacePartnersScreen> {
   Widget _buildSearchAndFilters() {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: const TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by name, skills, or industry...',
-                border: InputBorder.none,
-                icon: Icon(Icons.search, color: AppTheme.textMuted),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: const TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name, skills, or industry...',
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search, color: AppTheme.textMuted),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
+          const SizedBox(width: 10),
+          _compactAction(Icons.tune, 'Filter'),
+          const SizedBox(width: 8),
+          _compactAction(Icons.sort, 'Sort'),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactAction(IconData icon, String label) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(child: _filterAction(Icons.tune, 'Filter')),
-              const SizedBox(width: 12),
-              Expanded(child: _filterAction(Icons.sort, 'Sort')),
+              Icon(icon, size: 18, color: AppTheme.textMain),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.textMain,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

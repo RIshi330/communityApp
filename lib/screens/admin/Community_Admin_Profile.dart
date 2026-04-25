@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 
 void main() {
   runApp(const AdminProfileApp());
@@ -61,7 +62,7 @@ class AdminProfileScreen extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {},
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text('Admin Profile'),
         actions: [
@@ -285,24 +286,7 @@ class AdminProfileScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 3,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textMuted,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.history_edu), label: 'Logs'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 3),
     );
   }
 

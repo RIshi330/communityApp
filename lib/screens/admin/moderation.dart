@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 
 void main() {
   runApp(const ModerationHubApp());
@@ -152,6 +153,7 @@ class _ModerationHubScreenState extends State<ModerationHubScreen>
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
     );
   }
 
