@@ -1,6 +1,7 @@
 import 'package:commity_app1/screens/commity_admin.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
 import 'package:commity_app1/screens/group_model.dart';
+import 'package:commity_app1/screens/User_screens/CommunityProfile.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -910,44 +911,423 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   // ── Discover Tab ───────────────────────────────────────────────────────────
+  String _discoverCategory = 'All';
+  final List<String> _discoverCategories = [
+    'All',
+    'Development',
+    'Design',
+    'Artificial Intelligence',
+    'Business',
+  ];
+
   Widget _buildDiscoverTab() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: 10,
-      itemBuilder: (context, index) {
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final groups = _filteredSuggested;
+
+    return Column(
+      children: [
+        // Category Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(
+            children: _discoverCategories.map((cat) {
+              final active = _discoverCategory == cat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(cat),
+                  selected: active,
+                  onSelected: (_) => setState(() => _discoverCategory = cat),
+                  selectedColor: const Color(0xff8F7CFF),
+                  backgroundColor: Colors.white,
+                  labelStyle: TextStyle(
+                    color: active ? Colors.white : const Color(0xFF6B7280),
+                    fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: active
+                          ? const Color(0xff8F7CFF)
+                          : const Color(0xFFE6E6F0),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+        const SizedBox(height: 12),
+
+        // Community Cards
+        Expanded(
+          child: _isLoading
+              ? const Center(
+                  child:
+                      CircularProgressIndicator(color: Color(0xff8F7CFF)),
+                )
+              : groups.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8E5FF),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.explore_outlined,
+                                color: Color(0xff8F7CFF), size: 36),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'No communities found',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Try a different search or category',
+                            style: TextStyle(
+                                color: Color(0xFF6B7280), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _fetchSuggestedCommunities,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        itemCount: groups.length,
+                        itemBuilder: (context, index) {
+                          return _buildDiscoverCommunityCard(groups[index]);
+                        },
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  /// Premium discover card – adapted from DiscoverCommunities design
+  Widget _buildDiscoverCommunityCard(SuggestedGroup group) {
+    // Derive display values from the model
+    final String initials = group.name.isNotEmpty
+        ? group.name
+            .split(' ')
+            .take(2)
+            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+            .join()
+        : '?';
+    final String memberText = _formatCount(group.memberCount);
+    final String price =
+        group.joiningRule == 'free' || group.joiningRule == 'Free'
+            ? 'Free'
+            : group.joiningRule;
+    final String status = 'ONLINE';
+    final List<String> tags = group.category
+        .split(',')
+        .take(3)
+        .map((t) => '#${t.trim()}')
+        .where((t) => t.length > 1)
+        .toList();
+
+    const Color primaryColor = Color(0xff8F7CFF);
+    const Color primarySoft = Color(0xFFF1F2FF);
+    const Color borderColor = Color(0xFFE6E6F0);
+    const Color textMain = Color(0xFF1F2937);
+    const Color textMuted = Color(0xFF6B7280);
+    const Color successColor = Color(0xFF10B981);
+    const Color warningColor = Color(0xFFF59E0B);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Banner + Badge + Logo ──
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              Expanded(
+              ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(23)),
                 child: Image.network(
-                  'https://picsum.photos/300/300?random=${index + 20}',
+                  group.coverUrl,
+                  height: 130,
+                  width: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 130,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xff8F7CFF), Color(0xffB5ACFF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(23)),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.group, color: Colors.white, size: 44),
+                    ),
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Community Topic ${index + 1}',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
+
+              // Visibility badge
+              if (group.visibility == 'private')
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.lock, color: warningColor, size: 13),
+                        SizedBox(width: 4),
+                        Text(
+                          'PRIVATE',
+                          style: TextStyle(
+                            color: warningColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Logo circle
+              Positioned(
+                bottom: -22,
+                left: 18,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+
+          const SizedBox(height: 28),
+
+          // ── Info Section ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name + Status
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        group.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: textMain,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: primarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: successColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            status,
+                            style: const TextStyle(
+                              color: successColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+
+                // Members + Price
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '👥 $memberText Members',
+                      style:
+                          const TextStyle(color: textMuted, fontSize: 13),
+                    ),
+                    Text(
+                      price,
+                      style: const TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Tags
+                if (tags.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tags.map((tag) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: primarySoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            color: primaryColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 16),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommunityProfileScreen(
+                                groupId: group.id,
+                              ),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: const BorderSide(color: borderColor),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('View',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: group.isLoading
+                            ? null
+                            : () => _joinCommunity(group),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: group.isJoined
+                              ? Colors.white
+                              : primaryColor,
+                          foregroundColor: group.isJoined
+                              ? primaryColor
+                              : Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: group.isJoined
+                                ? const BorderSide(color: primaryColor)
+                                : BorderSide.none,
+                          ),
+                        ),
+                        child: group.isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primaryColor,
+                                ),
+                              )
+                            : Text(
+                                group.isJoined ? 'Joined ✓' : 'Join',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
