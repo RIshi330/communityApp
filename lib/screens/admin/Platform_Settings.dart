@@ -69,7 +69,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-        title: const Text('Dashboard'),
+        title: const Text('Platform Settings'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -88,15 +88,6 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Platform Settings',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textMain,
-              ),
-            ),
-            const SizedBox(height: 8),
             const Text(
               'Manage global automation and API integration policies for the Lavender Stitch ecosystem.',
               style: TextStyle(
@@ -382,7 +373,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 3),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 4),
     );
   }
 

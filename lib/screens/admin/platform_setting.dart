@@ -385,7 +385,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 3),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 4),
     );
   }
 

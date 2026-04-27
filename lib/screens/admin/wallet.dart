@@ -284,7 +284,7 @@ class _FinancialCenterScreenState extends State<FinancialCenterScreen> {
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 2),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 3),
     );
   }
 

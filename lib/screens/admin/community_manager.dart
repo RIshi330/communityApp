@@ -70,7 +70,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text('Community Admin'),
+        title: const Text('Managed Communities'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -110,7 +110,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -119,23 +119,10 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.tune, color: AppTheme.lavender),
-                      onPressed: () {},
+                      onPressed: () => _showFilterSheet(),
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Header Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Managed Communities',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                  const SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
                       color: AppTheme.softLavender,
@@ -218,7 +205,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
           ],
         ),
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 2),
     );
   }
 
@@ -308,7 +295,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: () => _showChatModal(manager),
                 icon: const Icon(
                   Icons.chat_bubble_outline,
                   size: 18,
@@ -478,31 +465,20 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                         ],
                       ),
                     ),
-                    Column(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.chat_bubble,
-                            color: AppTheme.muted,
-                            size: 20,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.block,
-                            color: AppTheme.error,
-                            size: 20,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: AppTheme.muted,
-                            size: 20,
-                          ),
+                        IconButton(onPressed: () => _showChatModal(manager), icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.muted, size: 20)),
+                        IconButton(onPressed: () {}, icon: const Icon(Icons.block, color: AppTheme.error, size: 20)),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: AppTheme.muted, size: 20),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          onSelected: (_) {},
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'promote', child: Row(children: [Icon(Icons.campaign, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Promote')])),
+                            const PopupMenuItem(value: 'sponsor', child: Row(children: [Icon(Icons.volunteer_activism, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Sponsor')])),
+                            const PopupMenuItem(value: 'feature', child: Row(children: [Icon(Icons.grade, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Featured')])),
+                          ],
                         ),
                       ],
                     ),
@@ -611,6 +587,80 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showChatModal(String name) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.65,
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(children: [
+          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.lavender, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Row(children: [
+                CircleAvatar(radius: 16, backgroundColor: Colors.white24, child: Text(name.split(' ').map((n) => n[0]).join(''), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text('Community Admin', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                ]),
+              ]),
+              IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(ctx)),
+            ]),
+          ),
+          Expanded(child: Container(color: AppTheme.surface, padding: const EdgeInsets.all(16), child: Align(alignment: Alignment.topLeft,
+            child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text("Hello! I'm the administrator for this community. How can I help you today?", style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 4),
+                Text('09:41 AM', style: TextStyle(fontSize: 9, color: AppTheme.muted), textAlign: TextAlign.right),
+              ]),
+            ),
+          ))),
+          Container(padding: const EdgeInsets.all(12), decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
+            child: Row(children: [
+              Expanded(child: TextField(decoration: InputDecoration(hintText: 'Type a message...', filled: true, fillColor: AppTheme.surface, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
+              const SizedBox(width: 8),
+              Container(width: 44, height: 44, decoration: BoxDecoration(color: AppTheme.lavender, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.send, color: Colors.white, size: 20)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Center(child: Container(width: 48, height: 5, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(3)))),
+          const SizedBox(height: 20),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('Filter Communities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            IconButton(icon: const Icon(Icons.close, color: AppTheme.muted), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 20),
+          const Text('CATEGORY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted, letterSpacing: 1)),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, children: ['All', 'Music', 'Education', 'Tech'].map((c) => ChoiceChip(label: Text(c), selected: c == 'All', selectedColor: AppTheme.softLavender, labelStyle: TextStyle(color: c == 'All' ? AppTheme.lavender : AppTheme.muted, fontWeight: FontWeight.bold, fontSize: 13), side: BorderSide(color: c == 'All' ? AppTheme.lavender : AppTheme.border), onSelected: (_) {})).toList()),
+          const SizedBox(height: 24),
+          const Text('ACCESS TYPE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted, letterSpacing: 1)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.check_circle_outline, size: 18), label: const Text('Free'), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), side: const BorderSide(color: AppTheme.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+            const SizedBox(width: 12),
+            Expanded(child: ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.check_circle, size: 18), label: const Text('Paid'), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.softLavender, foregroundColor: AppTheme.lavender, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppTheme.lavender))))),
+          ]),
+          const SizedBox(height: 28),
+          SizedBox(width: double.infinity, height: 54, child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.lavender, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Apply Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)))),
+          const SizedBox(height: 12),
+        ]),
+      ),
     );
   }
 }

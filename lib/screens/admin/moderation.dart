@@ -153,7 +153,7 @@ class _ModerationHubScreenState extends State<ModerationHubScreen>
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 2),
     );
   }
 

@@ -1111,6 +1111,37 @@ class _AuthProductionState extends State<AuthProduction> {
             ),
           ),
         ],
+        // ── Temporary Admin Access Button ──
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminDashboardScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.admin_panel_settings, color: Colors.orange),
+            label: const Text(
+              'Temp Access Admin',
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.orange),
+              backgroundColor: const Color(0xFFFFF8E1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

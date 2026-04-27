@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
+import 'package:commity_app1/screens/admin/Marketplace.dart' hide AppTheme;
 
 void main() {
   runApp(const AdminDashboardApp());
@@ -73,7 +74,7 @@ class _TeamPartnerManagerScreenState extends State<TeamPartnerManagerScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text('Admin Dashboard'),
+        title: const Text('Team & Partner'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -91,26 +92,6 @@ class _TeamPartnerManagerScreenState extends State<TeamPartnerManagerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Team Management',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
-                    ),
-                  ),
-                  const Text(
-                    'Manage your internal team and external partnerships seamlessly.',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 24),
 
             // System Suggested Profiles Section
@@ -178,23 +159,20 @@ class _TeamPartnerManagerScreenState extends State<TeamPartnerManagerScreen> {
         children: [
           FloatingActionButton(
             heroTag: 'market',
-            onPressed: () {},
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketplacePartnersScreen())),
             backgroundColor: AppTheme.primarySoft,
-            child: const Icon(
-              Icons.storefront_outlined,
-              color: AppTheme.primary,
-            ),
+            child: const Icon(Icons.storefront_outlined, color: AppTheme.primary),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'add',
-            onPressed: () {},
+            onPressed: () => _showInviteModal(),
             backgroundColor: AppTheme.primary,
             child: const Icon(Icons.person_add_alt_1, color: Colors.white),
           ),
         ],
       ),
-      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
+      bottomNavigationBar: const AdminBottomNavigation(currentIndex: 2),
     );
   }
 
@@ -560,103 +538,121 @@ class _TeamPartnerManagerScreenState extends State<TeamPartnerManagerScreen> {
     );
   }
 
+  void _showInviteModal() {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Row(children: [
+              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primarySoft, borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.mail_outline, color: AppTheme.primary)),
+              const SizedBox(width: 12),
+              const Text('Invite Member', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ]),
+            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 20),
+          _modalField('Full Name', 'Johnathan Smith'),
+          _modalField('Email Address', 'john@company.com'),
+          Row(children: [
+            Expanded(child: _modalDropdown('Assign Role', ['Manager', 'Admin', 'Editor', 'Viewer'])),
+            const SizedBox(width: 12),
+            Expanded(child: _modalDropdown('Member Type', ['Team', 'Partner'])),
+          ]),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), side: const BorderSide(color: AppTheme.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Cancel'))),
+            const SizedBox(width: 12),
+            Expanded(child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Send Invitation', style: TextStyle(fontWeight: FontWeight.bold)))),
+          ]),
+          const SizedBox(height: 16),
+        ]),
+      ),
+    );
+  }
+
   void _showChatModal() {
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                'Send Message',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const Expanded(
-              child: Center(child: Text('Chat Interface Placeholder')),
-            ),
-          ],
-        ),
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(16)),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Row(children: const [Icon(Icons.chat_bubble_outline, color: Colors.white), SizedBox(width: 8), Text('New Message', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))]),
+              IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(ctx)),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppTheme.primarySoft, borderRadius: BorderRadius.circular(10)),
+            child: const Row(children: [Text('To: ', style: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.bold)), Text('Member Workspace', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600))]),
+          ),
+          const SizedBox(height: 12),
+          TextField(maxLines: 4, decoration: InputDecoration(hintText: 'Type your message here...', filled: true, fillColor: AppTheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+          const SizedBox(height: 12),
+          Row(children: [
+            IconButton(icon: const Icon(Icons.attach_file, color: AppTheme.textMuted), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.mood, color: AppTheme.textMuted), onPressed: () {}),
+            const Spacer(),
+            ElevatedButton.icon(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.send, size: 16), label: const Text('Send'), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
+          ]),
+          const SizedBox(height: 8),
+        ]),
       ),
     );
   }
 
   void _showTaskModal() {
     showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Assign Task',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Select Task from List',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            _buildTaskItem('Verify New Communities'),
-            _buildTaskItem('Review Flagged Content'),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Create New Task'),
-              ),
-            ),
-          ],
-        ),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('Assign New Task', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+          ]),
+          const SizedBox(height: 16),
+          const Text('Quick Select', style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(12)),
+            child: DropdownButtonHideUnderline(child: DropdownButton<String>(isExpanded: true, hint: const Text('Select predefined task...'), items: ['Review Design Specs', 'Weekly Performance Sync', 'Q3 Roadmap Planning'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (_) {})),
+          ),
+          const SizedBox(height: 16),
+          Row(children: [const Expanded(child: Divider()), Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('OR', style: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.bold))), const Expanded(child: Divider())]),
+          const SizedBox(height: 16),
+          const Text('Create Custom Task', style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          TextField(decoration: InputDecoration(hintText: 'Task title...', filled: true, fillColor: AppTheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+          const SizedBox(height: 8),
+          TextField(maxLines: 3, decoration: InputDecoration(hintText: 'Task description...', filled: true, fillColor: AppTheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Assign Task', style: TextStyle(fontWeight: FontWeight.bold)))),
+          const SizedBox(height: 12),
+        ]),
       ),
     );
   }
 
-  Widget _buildTaskItem(String title) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(
-        Icons.check_circle_outline,
-        color: AppTheme.textMuted,
+  Widget _modalField(String label, String hint) {
+    return Padding(padding: const EdgeInsets.only(bottom: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
+      const SizedBox(height: 6),
+      TextField(decoration: InputDecoration(hintText: hint, filled: true, fillColor: AppTheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+    ]));
+  }
+
+  Widget _modalDropdown(String label, List<String> items) {
+    return Padding(padding: const EdgeInsets.only(bottom: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
+      const SizedBox(height: 6),
+      Container(padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(12)),
+        child: DropdownButtonHideUnderline(child: DropdownButton<String>(isExpanded: true, value: items.first, items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(), onChanged: (_) {})),
       ),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: () {},
-    );
+    ]));
   }
 }

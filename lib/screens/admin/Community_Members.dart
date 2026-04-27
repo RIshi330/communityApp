@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 import 'package:commity_app1/screens/admin/Marketplace.dart' hide AppTheme;
+import 'package:commity_app1/screens/admin/team_and_partner.dart' hide AppTheme;
 
 void main() {
   runApp(const UserManagementApp());
@@ -190,8 +191,9 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       ),
       body: Column(
         children: [
-          // Approval Queue Banner
-          _buildApprovalBanner(),
+          // Approval Queue
+          _buildApprovalSlider(),
+          const SizedBox(height: 8),
 
           // Tabs
           Container(
@@ -325,213 +327,77 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           _buildPagination(),
         ],
       ),
-      floatingActionButton: Builder(
-        builder: (fabContext) => FloatingActionButton(
-          onPressed: () => _showAddMenu(fabContext),
-          backgroundColor: AppTheme.primary,
-          child: const Icon(Icons.person_add_alt_1, color: Colors.white),
-        ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'market',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketplacePartnersScreen())),
+            backgroundColor: Colors.white,
+            child: const Icon(Icons.storefront_outlined, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'team',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeamPartnerManagerScreen())),
+            backgroundColor: AppTheme.primarySoft,
+            child: const Icon(Icons.group_add_outlined, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: () => _showAddMenu(context),
+            backgroundColor: AppTheme.primary,
+            child: const Icon(Icons.person_add_alt_1, color: Colors.white),
+          ),
+        ],
       ),
       bottomNavigationBar: const AdminBottomNavigation(currentIndex: 1),
     );
   }
 
-  Widget _buildApprovalBanner() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Approval Queue',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textMain,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '4 Pending',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildApprovalItem(
-            'Stitch Studio',
-            'Business Request',
-            'Enterprise membership request for 15 users.',
-          ),
-          const SizedBox(height: 16),
-          _buildHealthCard(),
-        ],
-      ),
+  Widget _buildApprovalSlider() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        const Text('Approval Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(20)),
+          child: const Text('4 Pending', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+      ])),
+      const SizedBox(height: 12),
+      SizedBox(height: 160, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), physics: const BouncingScrollPhysics(), children: [
+        _approvalCard('Stitch Studio', 'Business Request', 'Enterprise membership request for 15 users.', Icons.business),
+        _approvalCard('Lumina Agency', 'Marketing Partner', 'New agency partnership application.', Icons.campaign),
+        _approvalCard('Velvet Retail', 'Vendor Account', 'Priority access request for holiday sales.', Icons.shopping_bag),
+        _approvalCard('Nebula Tech', 'Startup Tier', 'Beta program enrollment request.', Icons.rocket_launch),
+      ])),
+    ]);
+  }
+
+  Widget _approvalCard(String name, String type, String desc, IconData icon) {
+    return Container(width: 280, margin: const EdgeInsets.only(right: 12), padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primarySoft, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppTheme.primary, size: 20)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(type, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10, fontWeight: FontWeight.bold)),
+          ])),
+        ]),
+        const SizedBox(height: 8),
+        Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+        const Spacer(),
+        Row(children: [
+          Expanded(child: ElevatedButton(onPressed: () {}, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Approve', style: TextStyle(fontSize: 12)))),
+          const SizedBox(width: 8),
+          Expanded(child: OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primary, side: const BorderSide(color: AppTheme.border), padding: const EdgeInsets.symmetric(vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Decline', style: TextStyle(fontSize: 12)))),
+        ]),
+      ]),
     );
   }
 
-  Widget _buildApprovalItem(String title, String subtitle, String desc) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primarySoft,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.business, color: AppTheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            desc,
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('Approve'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: const BorderSide(color: AppTheme.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('Decline'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildHealthCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primary,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'SYSTEM HEALTH',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-          const Text(
-            '99.8%',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                'Auto-active',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildFilterButton() {
     return Container(

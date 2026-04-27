@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/Community_Admin_Dashboard.dart';
+import 'package:commity_app1/screens/admin/Community_Members.dart';
 import 'package:commity_app1/screens/admin/community_manager.dart';
 import 'package:commity_app1/screens/admin/wallet.dart';
 import 'package:commity_app1/screens/admin/Platform_Settings.dart';
@@ -18,9 +19,12 @@ class AdminBottomNavigation extends StatelessWidget {
         destination = const AdminDashboardScreen();
         break;
       case 1:
-        destination = const CommunityManagementHub();
+        destination = const UserManagementScreen();
         break;
       case 2:
+        destination = const CommunityManagementHub();
+        break;
+      case 3:
         destination = const FinancialCenterScreen();
         break;
       default:
@@ -46,6 +50,10 @@ class AdminBottomNavigation extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_rounded),
           label: 'Dashboard',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people_outline),
+          label: 'Members',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.hub_outlined),
