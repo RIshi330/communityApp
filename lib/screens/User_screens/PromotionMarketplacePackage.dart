@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/Database/Database.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // COLORS
@@ -28,6 +29,7 @@ class Community {
 }
 
 class Package {
+  final int id;
   final String title;
   final String community;
   final List<String> badges;
@@ -44,6 +46,7 @@ class Package {
   final int aiMatchPercent;
 
   const Package({
+    this.id = 0,
     required this.title,
     required this.community,
     required this.badges,
@@ -66,6 +69,126 @@ class Package {
     this.interests = const ['Marketing', 'Startups', 'Tech'],
     this.aiMatchPercent = 88,
   });
+
+  /// Parse from API response (handles get_home_feed & get_package_details)
+  factory Package.fromJson(Map<String, dynamic> json) {
+    final id = int.tryParse(
+          json['id']?.toString() ?? json['item_id']?.toString() ?? '0',
+        ) ?? 0;
+
+    final title = json['name']?.toString() ??
+        json['title']?.toString() ??
+        json['package_name']?.toString() ??
+        'Untitled';
+
+    String community = '';
+    if (json['community'] is Map) {
+      community = (json['community'] as Map)['title']?.toString() ?? '';
+    } else {
+      community = json['community']?.toString() ?? '';
+    }
+
+    final description =
+        json['description']?.toString() ?? 'No description available';
+
+    final type =
+        json['item_type']?.toString() ?? json['type']?.toString() ?? 'Product';
+
+    // Pricing
+    String price = '₹0';
+    String pricingModel = 'Fixed';
+    if (json['pricing'] is Map) {
+      final pr = json['pricing'] as Map;
+      price = '₹${pr['amount'] ?? pr['price'] ?? pr['base_price'] ?? 0}';
+      pricingModel = pr['model']?.toString() ?? 'Fixed';
+    } else if (json['amount'] != null) {
+      price = '₹${json['amount']}';
+    }
+
+    // Duration
+    String? duration;
+    if (json['duration_value'] != null && json['duration_type'] != null) {
+      duration = '${json['duration_value']} ${json['duration_type']}';
+    } else if (json['duration'] != null) {
+      duration = json['duration'].toString();
+    }
+
+    // Features
+    List<String> features = [];
+    if (json['features'] is List) {
+      features = (json['features'] as List).map((e) => e.toString()).toList();
+    } else if (json['features'] is Map) {
+      features =
+          (json['features'] as Map).values.map((e) => e.toString()).toList();
+    }
+
+    // Placements → badges
+    List<String> badges = [];
+    if (json['placements'] is Map) {
+      badges =
+          (json['placements'] as Map).keys.map((e) => e.toString()).toList();
+    } else if (json['placements'] is List) {
+      badges =
+          (json['placements'] as List).map((e) => e.toString()).toList();
+    } else if (json['badges'] is List) {
+      badges = (json['badges'] as List).map((e) => e.toString()).toList();
+    }
+
+    // Reach
+    String? reach;
+    if (json['reach'] is Map) {
+      final r = json['reach'] as Map;
+      reach = r['total']?.toString() ?? r['estimated']?.toString();
+    } else if (json['impressions'] != null) {
+      final imp = int.tryParse(json['impressions'].toString()) ?? 0;
+      reach = imp >= 1000
+          ? '${(imp / 1000).toStringAsFixed(imp >= 10000 ? 0 : 1)}K'
+          : imp.toString();
+    } else if (json['reach'] != null) {
+      reach = json['reach'].toString();
+    }
+
+    // Targeting → targetAudience
+    List<String> targetAudience = [];
+    if (json['targeting'] is Map) {
+      final t = json['targeting'] as Map;
+      if (t['audience'] is List) {
+        targetAudience =
+            (t['audience'] as List).map((e) => e.toString()).toList();
+      } else if (t['demographics'] is List) {
+        targetAudience =
+            (t['demographics'] as List).map((e) => e.toString()).toList();
+      }
+    }
+    if (targetAudience.isEmpty) targetAudience = const ['General'];
+
+    // applicable_to → interests
+    List<String> interests = [];
+    if (json['applicable_to'] is List) {
+      interests =
+          (json['applicable_to'] as List).map((e) => e.toString()).toList();
+    } else if (json['interests'] is List) {
+      interests =
+          (json['interests'] as List).map((e) => e.toString()).toList();
+    }
+    if (interests.isEmpty) interests = const ['General'];
+
+    return Package(
+      id: id,
+      title: title,
+      community: community,
+      badges: badges,
+      reach: reach,
+      duration: duration,
+      price: price,
+      type: type,
+      pricingModel: pricingModel,
+      description: description,
+      features: features,
+      targetAudience: targetAudience,
+      interests: interests,
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -422,6 +545,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
   String _selCommunity = 'All Communities';
   String _selDuration = 'Any';
 
+  final Database _database = Database();
+  bool _loading = true;
+  String? _error;
+  List<Package> _packages = [];
+  List<Community> _communities = [];
+
   int get _activeCount {
     int c = 0;
     if (_selType != 'All') c++;
@@ -431,7 +560,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
     return c;
   }
 
-  List<Package> get _filtered => allPackages.where((p) {
+  List<Package> get _filtered => _packages.where((p) {
     if (_selType != 'All' && p.type != _selType) return false;
     if (_selPricing != 'All' && p.pricingModel != _selPricing) return false;
     if (_selCommunity != 'All Communities' && p.community != _selCommunity)
@@ -453,6 +582,128 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
 
   List<Package> get _topPkgs => _filtered.take(2).toList();
   List<Package> get _restPkgs => _filtered.skip(2).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPackages();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPackages() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await _database.getData({
+        'action': 'get_home_feed',
+      });
+
+      if (response['success'] == true || response['status'] == 200) {
+        final dynamic payload = response['data'];
+        final List<dynamic> items = payload is List
+            ? payload
+            : (payload is Map
+                ? (payload['packages'] as List<dynamic>? ??
+                    payload['feed'] as List<dynamic>? ??
+                    const [])
+                : const []);
+
+        final packages = items
+            .whereType<Map>()
+            .map((item) => Package.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+
+        if (packages.isNotEmpty) {
+          _applyPackagesAndCommunities(packages);
+        } else {
+          _useFallbackData();
+        }
+      } else {
+        _useFallbackData();
+      }
+    } catch (error) {
+      debugPrint('Error loading packages: $error');
+      _useFallbackData();
+    }
+  }
+
+  void _applyPackagesAndCommunities(List<Package> packages) {
+    final communityCounts = <String, int>{};
+    for (final package in packages) {
+      if (package.community.trim().isEmpty) continue;
+      communityCounts[package.community] =
+          (communityCounts[package.community] ?? 0) + 1;
+    }
+
+    final communities = communityCounts.entries
+        .map((entry) => Community(
+              name: entry.key,
+              members: '${entry.value} packages',
+            ))
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    if (mounted) {
+      setState(() {
+        _packages = packages;
+        _communities = communities;
+        _loading = false;
+      });
+    }
+  }
+
+  void _useFallbackData() {
+    _applyPackagesAndCommunities(List<Package>.from(allPackages));
+  }
+
+  Widget _errorState() => Container(
+    padding: const EdgeInsets.all(32),
+    decoration: BoxDecoration(
+      color: AppColors.card,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      children: [
+        const Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.accent),
+        const SizedBox(height: 12),
+        const Text(
+          'Unable to load packages',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _error ?? 'Unknown error',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13, color: AppColors.muted),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: _loadPackages,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accent,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+          child: const Text('Retry'),
+        ),
+      ],
+    ),
+  );
+
+  void _goBack() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
 
   // card tap → Detail Screen
   void _goDetail(Package pkg) => Navigator.push(
@@ -477,7 +728,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _goBack,
         ),
         title: const Text(
           'Promotion Marketplace',
@@ -1521,11 +1772,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
     }
   }
 
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1543,11 +1789,62 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
   bool _infl = false;
   String _opportunity = 'Select Opportunity';
 
-  Package get pkg => widget.package;
+  final Database _database = Database();
+  late Package _pkg;
+  bool _detailLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pkg = widget.package;
+    _fetchPackageDetails();
+    _trackEngagement('views');
+  }
+
+  Package get pkg => _pkg;
   int get _base =>
       int.tryParse(pkg.price.replaceAll('₹', '').replaceAll(',', '')) ?? 0;
   int get _addon => (_push ? 199 : 0) + (_infl ? 499 : 0);
   int get _total => _base + _addon;
+
+  /// Fetch full package details from API
+  Future<void> _fetchPackageDetails() async {
+    if (_pkg.id <= 0) return;
+    setState(() => _detailLoading = true);
+    try {
+      final response = await _database.getData({
+        'action': 'get_package_details',
+        'id': _pkg.id.toString(),
+      });
+      if (response['success'] == true || response['status'] == 200) {
+        final data = response['data'];
+        if (data is Map) {
+          if (mounted) {
+            setState(() {
+              _pkg = Package.fromJson(Map<String, dynamic>.from(data));
+              _detailLoading = false;
+            });
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching package details: $e');
+    }
+    if (mounted) setState(() => _detailLoading = false);
+  }
+
+  /// Track engagement (views, likes, share)
+  Future<void> _trackEngagement(String type) async {
+    if (_pkg.id <= 0) return;
+    try {
+      await _database.getData({
+        'action': 'track_engagement',
+        'package_id': _pkg.id.toString(),
+        'type': type,
+      });
+    } catch (_) {}
+  }
 
   // "Proceed to Payment" → BuyModelScreen
   void _openPayment() => Navigator.push(
@@ -1585,7 +1882,7 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined, color: Colors.white),
-            onPressed: () {},
+            onPressed: () => _trackEngagement('share'),
           ),
           IconButton(
             icon: const Icon(
@@ -1597,7 +1894,16 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          if (_detailLoading)
+            const LinearProgressIndicator(
+              color: AppColors.accent,
+              backgroundColor: AppColors.accentSoft,
+              minHeight: 3,
+            ),
+          Expanded(
+            child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (ctx, cons) {
@@ -1616,6 +1922,9 @@ class _PackageDetailScreenState extends State<PackageDetailScreen> {
             );
           },
         ),
+      ),
+          ),
+        ],
       ),
     );
   }
