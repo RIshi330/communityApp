@@ -16,7 +16,7 @@ import 'package:commity_app1/screens/create_post.dart';
 import 'package:commity_app1/screens/notification_screen.dart';
 import 'package:commity_app1/screens/profile_screen.dart';
 import 'package:commity_app1/screens/product_shop/productshop_btc.dart';
-import 'package:commity_app1/screens/promotion_marketplace_screen.dart';
+import 'package:commity_app1/screens/User_screens/PromotionMarketplacePackage.dart';
 import 'package:commity_app1/screens/seller_bank_accounts_screen.dart';
 import 'package:commity_app1/screens/wallet_screen.dart';
 import 'package:share_plus/share_plus.dart';
