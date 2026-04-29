@@ -16,7 +16,7 @@ class Database {
 
   /// Main API communication method
   /// Handles all API calls with session management and error handling
-  Future<Map> getData(Map postBody) async {
+  Future<Map> getData(Map postBody, {String endpointUrl = apiUrl}) async {
     var result = {};
     Map<String, String> stringBody = {}; // Initialize here
 
@@ -30,7 +30,7 @@ class Database {
       );
 
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse(endpointUrl),
         body: stringBody,
         headers: {
           'APP_ID': appId.toString(),
@@ -131,7 +131,7 @@ class Database {
               "validator": validator,
             };
 
-            final res = await getData(postData);
+            final res = await getData(postData, endpointUrl: endpointUrl);
 
             var result = res['LOGIN_RESPONSE'];
 
@@ -160,7 +160,7 @@ class Database {
                 value: jsonEncode(res['filters'] ?? {}),
               );
 
-              return await getData(postBody);
+              return await getData(postBody, endpointUrl: endpointUrl);
             }
           }
         }
@@ -169,14 +169,14 @@ class Database {
       print('Database.dart - Network Error Details:');
       print('Error: $e');
       print('Error Type: ${e.runtimeType}');
-      print('Base URL: $apiUrl');
+      print('Base URL: $endpointUrl');
       print('Request Body: $stringBody');
 
       result = {
         "status": 300,
         "error": "Server not reachable - ${e.toString()}",
         "debug_info": {
-          "base_url": apiUrl,
+          "base_url": endpointUrl,
           "error_type": e.runtimeType.toString(),
           "error_message": e.toString(),
         },
