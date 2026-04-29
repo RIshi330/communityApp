@@ -1,23 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
-
-void main() {
-  runApp(const CommunityAdminApp());
-}
-
-class CommunityAdminApp extends StatelessWidget {
-  const CommunityAdminApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Community Admin',
-      theme: AppTheme.theme,
-      home: const CommunityManagementHub(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
+import 'package:commity_app1/Database/Database.dart';
 
 class AppTheme {
   static const Color lavender = Color(0xFF7C83FD);
@@ -60,10 +43,70 @@ class CommunityManagementHub extends StatefulWidget {
 }
 
 class _CommunityManagementHubState extends State<CommunityManagementHub> {
+  final _db = Database();
   bool isGridView = false;
+  
+  List<dynamic> _communities = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCommunities();
+  }
+
+  Future<void> _fetchCommunities() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await _db.postJsonData({
+        'action': 'admin_fetch_communities',
+        'search': _searchQuery,
+      });
+
+      if (response['success'] == true) {
+        setState(() {
+          _communities = response['data'] ?? [];
+        });
+      } else {
+        _showSnackBar(response['message']?.toString() ?? 'Failed to load communities');
+      }
+    } catch (e) {
+      _showSnackBar('Error loading communities: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _updateCommunityStatus(int communityId, int status) async {
+    try {
+      final response = await _db.postJsonData({
+        'action': 'admin_update_community_status',
+        'community_id': communityId.toString(),
+        'status': status.toString(),
+      });
+
+      if (response['success'] == true) {
+        _showSnackBar('Status updated successfully');
+        _fetchCommunities(); // Refresh list
+      } else {
+        _showSnackBar(response['message']?.toString() ?? 'Failed to update status');
+      }
+    } catch (e) {
+      _showSnackBar('Error updating status: $e');
+    }
+  }
+
+  void _showSnackBar(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pendingCommunities = _communities.where((c) => c['status'].toString() == '0').toList();
+    final activeCommunities = _communities.where((c) => c['status'].toString() != '0').toList();
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -84,126 +127,146 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search and Filter Row
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search communities...',
-                          border: InputBorder.none,
-                          icon: Icon(Icons.search, color: AppTheme.muted),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
+      body: Column(
+        children: [
+          // Search and Filter Row
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppTheme.border),
                     ),
-                    child: IconButton(
-                      icon: const Icon(Icons.tune, color: AppTheme.lavender),
-                      onPressed: () => _showFilterSheet(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.softLavender,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildToggleButton(
-                          Icons.grid_view_rounded,
-                          isGridView,
-                          () => setState(() => isGridView = true),
+                    child: TextField(
+                      onChanged: (val) {
+                        _searchQuery = val;
+                        // Debounce could be added here
+                      },
+                      onSubmitted: (_) => _fetchCommunities(),
+                      decoration: InputDecoration(
+                        hintText: 'Search communities...',
+                        border: InputBorder.none,
+                        icon: const Icon(Icons.search, color: AppTheme.muted),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                          onPressed: _fetchCommunities,
                         ),
-                        _buildToggleButton(
-                          Icons.list_rounded,
-                          !isGridView,
-                          () => setState(() => isGridView = false),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Pending Approval Section
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'PENDING APPROVAL (4)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.muted,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'View All',
-                      style: TextStyle(
-                        color: AppTheme.lavender,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 120,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildPendingCard(
-                    'Design Thinkers',
-                    'Alex Rivero',
-                    '2h ago',
-                    'DT',
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.border),
                   ),
-                  _buildPendingCard(
-                    'Vintage Collect',
-                    'Sarah Chen',
-                    '5h ago',
-                    'VC',
+                  child: IconButton(
+                    icon: const Icon(Icons.tune, color: AppTheme.lavender),
+                    onPressed: () => _showFilterSheet(),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.softLavender,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildToggleButton(
+                        Icons.grid_view_rounded,
+                        isGridView,
+                        () => setState(() => isGridView = true),
+                      ),
+                      _buildToggleButton(
+                        Icons.list_rounded,
+                        !isGridView,
+                        () => setState(() => isGridView = false),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          ),
 
-            // Communities List/Grid
-            const SizedBox(height: 24),
-            isGridView ? _buildGridView() : _buildListView(),
-            const SizedBox(height: 100),
-          ],
-        ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _fetchCommunities,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (pendingCommunities.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'PENDING APPROVAL (${pendingCommunities.length})',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.muted,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {},
+                                    child: const Text(
+                                      'View All',
+                                      style: TextStyle(
+                                        color: AppTheme.lavender,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              height: 120,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: pendingCommunities.length,
+                                itemBuilder: (ctx, i) {
+                                  final c = pendingCommunities[i];
+                                  return _buildPendingCard(c);
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          if (activeCommunities.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Center(
+                                child: Text('No active communities found.', style: TextStyle(color: AppTheme.muted)),
+                              ),
+                            )
+                          else
+                            isGridView ? _buildGridView(activeCommunities) : _buildListView(activeCommunities),
+                            
+                          const SizedBox(height: 100),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
       ),
       bottomNavigationBar: const AdminBottomNavigation(currentIndex: 2),
     );
@@ -236,12 +299,12 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
     );
   }
 
-  Widget _buildPendingCard(
-    String title,
-    String manager,
-    String time,
-    String initials,
-  ) {
+  Widget _buildPendingCard(dynamic c) {
+    final title = c['community_title']?.toString() ?? 'Unknown';
+    final manager = c['owner_name']?.toString() ?? 'Unknown';
+    final initials = title.isNotEmpty ? title[0].toUpperCase() : '?';
+    final id = int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+
     return Container(
       width: 260,
       margin: const EdgeInsets.only(right: 16),
@@ -283,13 +346,15 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      '$manager • $time',
+                      manager,
                       style: const TextStyle(
                         color: AppTheme.muted,
                         fontSize: 11,
                       ),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -309,7 +374,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _updateCommunityStatus(id, 1), // 1 = approved
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.lavender,
                     foregroundColor: Colors.white,
@@ -325,16 +390,16 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () => _updateCommunityStatus(id, 2), // 2 = suspended
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.lavender,
-                    side: const BorderSide(color: AppTheme.softLavender),
+                    foregroundColor: AppTheme.error,
+                    side: const BorderSide(color: AppTheme.error),
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Details', style: TextStyle(fontSize: 12)),
+                  child: const Text('Reject', style: TextStyle(fontSize: 12)),
                 ),
               ),
             ],
@@ -344,71 +409,49 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
     );
   }
 
-  Widget _buildListView() {
-    return Column(
-      children: [
-        _buildCommunityCard(
-          'Audio Engineers Collective',
-          'Marcus Aurelius',
-          '3m ago',
-          'MUSIC',
-          'FREE',
-          '12.4k',
-          '8',
-          '24',
-          '82%',
-          '1.2k',
-          'High',
-          'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&q=80&w=200',
-        ),
-        _buildCommunityCard(
-          'Study Buddies Pro',
-          'Elena Fisher',
-          '1y ago',
-          'EDUCATION',
-          'PAID',
-          '3.8k',
-          '15',
-          '156',
-          '64%',
-          '8.4k',
-          'Steady',
-          'https://images.unsplash.com/photo-1523240715630-991e2e746e0c?auto=format&fit=crop&q=80&w=200',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGridView() {
-    return GridView.count(
+  Widget _buildListView(List<dynamic> activeCommunities) {
+    return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 0.6,
-      children: [
-        _buildCommunityCardGrid('Audio Engineers', '12.4k', 'MUSIC'),
-        _buildCommunityCardGrid('Study Buddies', '3.8k', 'EDUCATION'),
-      ],
+      itemCount: activeCommunities.length,
+      itemBuilder: (ctx, i) {
+        final c = activeCommunities[i];
+        return _buildCommunityCard(c);
+      },
     );
   }
 
-  Widget _buildCommunityCard(
-    String name,
-    String manager,
-    String time,
-    String category,
-    String pricing,
-    String members,
-    String packages,
-    String events,
-    String engagement,
-    String posts,
-    String activity,
-    String imageUrl,
-  ) {
+  Widget _buildGridView(List<dynamic> activeCommunities) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.65,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: activeCommunities.length,
+      itemBuilder: (ctx, i) {
+        final c = activeCommunities[i];
+        return _buildCommunityCardGrid(c);
+      },
+    );
+  }
+
+  Widget _buildCommunityCard(dynamic c) {
+    final name = c['community_title']?.toString() ?? 'Unknown';
+    final manager = c['owner_name']?.toString() ?? 'Unknown';
+    final catId = c['cat_id']?.toString() ?? '1';
+    final members = c['total_members']?.toString() ?? '0';
+    final packages = c['total_packages']?.toString() ?? '0';
+    final orders = c['total_orders']?.toString() ?? '0';
+    final statusText = c['status_text']?.toString() ?? '';
+    final isApproved = c['status']?.toString() == '1';
+    final privacy = c['group_privacy']?.toString() ?? 'Public';
+    final id = int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
@@ -425,14 +468,13 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        imageUrl,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
+                    Container(
+                      width: 60, height: 60,
+                      decoration: BoxDecoration(
+                        color: AppTheme.softLavender,
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.groups, color: AppTheme.lavender, size: 30),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -443,22 +485,28 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                             name,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 16,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
                               _buildBadge(
-                                category,
+                                'CAT $catId',
                                 AppTheme.softLavender,
                                 AppTheme.lavender,
                               ),
                               const SizedBox(width: 6),
                               _buildBadge(
-                                pricing,
+                                privacy.toUpperCase(),
                                 Colors.green.withOpacity(0.1),
                                 Colors.green,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildBadge(
+                                statusText.toUpperCase(),
+                                isApproved ? Colors.blue.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+                                isApproved ? Colors.blue : AppTheme.error,
                               ),
                             ],
                           ),
@@ -468,16 +516,24 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(onPressed: () => _showChatModal(manager), icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.muted, size: 20)),
-                        IconButton(onPressed: () {}, icon: const Icon(Icons.block, color: AppTheme.error, size: 20)),
+                        IconButton(
+                            onPressed: () => _showChatModal(manager),
+                            icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.muted, size: 20)),
                         PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert, color: AppTheme.muted, size: 20),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onSelected: (_) {},
+                          onSelected: (val) {
+                            if (val == 'suspend') {
+                              _updateCommunityStatus(id, 2);
+                            } else if (val == 'approve') {
+                              _updateCommunityStatus(id, 1);
+                            }
+                          },
                           itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'promote', child: Row(children: [Icon(Icons.campaign, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Promote')])),
-                            const PopupMenuItem(value: 'sponsor', child: Row(children: [Icon(Icons.volunteer_activism, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Sponsor')])),
-                            const PopupMenuItem(value: 'feature', child: Row(children: [Icon(Icons.grade, color: AppTheme.lavender, size: 18), SizedBox(width: 12), Text('Featured')])),
+                            if (isApproved)
+                              const PopupMenuItem(value: 'suspend', child: Row(children: [Icon(Icons.block, color: AppTheme.error, size: 18), SizedBox(width: 12), Text('Suspend')]))
+                            else
+                              const PopupMenuItem(value: 'approve', child: Row(children: [Icon(Icons.check_circle, color: Colors.green, size: 18), SizedBox(width: 12), Text('Approve')])),
                           ],
                         ),
                       ],
@@ -488,7 +544,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Managed by $manager • $time',
+                    'Managed by $manager',
                     style: const TextStyle(color: AppTheme.muted, fontSize: 12),
                   ),
                 ),
@@ -506,10 +562,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
               children: [
                 _buildStat('MEMBERS', members),
                 _buildStat('PACKAGES', packages),
-                _buildStat('EVENTS', events),
-                _buildStat('ENGAGEMENT', engagement, isColored: true),
-                _buildStat('POSTS', posts),
-                _buildStat('ACTIVITY', activity),
+                _buildStat('ORDERS', orders),
               ],
             ),
           ),
@@ -518,7 +571,11 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
     );
   }
 
-  Widget _buildCommunityCardGrid(String name, String members, String cat) {
+  Widget _buildCommunityCardGrid(dynamic c) {
+    final name = c['community_title']?.toString() ?? 'Unknown';
+    final members = c['total_members']?.toString() ?? '0';
+    final catId = c['cat_id']?.toString() ?? '1';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -527,19 +584,25 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
       ),
       child: Column(
         children: [
-          Expanded(child: Container(color: AppTheme.softLavender)),
+          Expanded(child: Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.softLavender,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+            ),
+            child: const Center(child: Icon(Icons.groups, color: AppTheme.lavender, size: 40)),
+          )),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis,),
                 Text(
                   '$members members',
                   style: const TextStyle(fontSize: 10, color: AppTheme.muted),
                 ),
                 const SizedBox(height: 8),
-                _buildBadge(cat, AppTheme.softLavender, AppTheme.lavender),
+                _buildBadge('CAT $catId', AppTheme.softLavender, AppTheme.lavender),
               ],
             ),
           ),
@@ -559,7 +622,7 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
         text,
         style: TextStyle(
           color: textCol,
-          fontSize: 10,
+          fontSize: 8,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -597,10 +660,10 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
         height: MediaQuery.of(context).size.height * 0.65,
         decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(children: [
-          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.lavender, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          Container(padding: const EdgeInsets.all(16), decoration: const BoxDecoration(color: AppTheme.lavender, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Row(children: [
-                CircleAvatar(radius: 16, backgroundColor: Colors.white24, child: Text(name.split(' ').map((n) => n[0]).join(''), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+                CircleAvatar(radius: 16, backgroundColor: Colors.white24, child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
                 const SizedBox(width: 12),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -612,10 +675,10 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
           ),
           Expanded(child: Container(color: AppTheme.surface, padding: const EdgeInsets.all(16), child: Align(alignment: Alignment.topLeft,
             child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)]),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 const Text("Hello! I'm the administrator for this community. How can I help you today?", style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 4),
-                Text('09:41 AM', style: TextStyle(fontSize: 9, color: AppTheme.muted), textAlign: TextAlign.right),
+                const Text('09:41 AM', style: TextStyle(fontSize: 9, color: AppTheme.muted), textAlign: TextAlign.right),
               ]),
             ),
           ))),
@@ -645,17 +708,9 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
             IconButton(icon: const Icon(Icons.close, color: AppTheme.muted), onPressed: () => Navigator.pop(ctx)),
           ]),
           const SizedBox(height: 20),
-          const Text('CATEGORY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted, letterSpacing: 1)),
+          const Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted, letterSpacing: 1)),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, children: ['All', 'Music', 'Education', 'Tech'].map((c) => ChoiceChip(label: Text(c), selected: c == 'All', selectedColor: AppTheme.softLavender, labelStyle: TextStyle(color: c == 'All' ? AppTheme.lavender : AppTheme.muted, fontWeight: FontWeight.bold, fontSize: 13), side: BorderSide(color: c == 'All' ? AppTheme.lavender : AppTheme.border), onSelected: (_) {})).toList()),
-          const SizedBox(height: 24),
-          const Text('ACCESS TYPE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.check_circle_outline, size: 18), label: const Text('Free'), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), side: const BorderSide(color: AppTheme.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
-            const SizedBox(width: 12),
-            Expanded(child: ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.check_circle, size: 18), label: const Text('Paid'), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.softLavender, foregroundColor: AppTheme.lavender, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppTheme.lavender))))),
-          ]),
+          Wrap(spacing: 8, children: ['All', 'Approved', 'Pending', 'Suspended'].map((c) => ChoiceChip(label: Text(c), selected: c == 'All', selectedColor: AppTheme.softLavender, labelStyle: TextStyle(color: c == 'All' ? AppTheme.lavender : AppTheme.muted, fontWeight: FontWeight.bold, fontSize: 13), side: BorderSide(color: c == 'All' ? AppTheme.lavender : AppTheme.border), onSelected: (_) {})).toList()),
           const SizedBox(height: 28),
           SizedBox(width: double.infinity, height: 54, child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.lavender, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Apply Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)))),
           const SizedBox(height: 12),

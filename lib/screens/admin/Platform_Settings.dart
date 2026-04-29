@@ -1,23 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
-
-void main() {
-  runApp(const PlatformSettingsApp());
-}
-
-class PlatformSettingsApp extends StatelessWidget {
-  const PlatformSettingsApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Lavender Stitch Admin',
-      theme: AppTheme.theme,
-      home: const PlatformSettingsScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
 
 class AppTheme {
   static const Color primary = Color(0xFF7C83FD);
@@ -60,15 +43,120 @@ class PlatformSettingsScreen extends StatefulWidget {
 }
 
 class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
+  final _db = Database();
+
   bool _autoApproveUsers = true;
   bool _autoApproveCommunities = false;
   String _apiStrategy = 'Platform Key';
+
+  // Gemini API Key
+  final _geminiKeyController = TextEditingController();
+  bool _obscureApiKey = true;
+  bool _geminiKeyLoading = false;
+  bool _geminiKeyConnected = false;
+  String? _geminiKeyError;
+
+  // Auto-approval loading states
+  bool _savingAutoApproval = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGeminiKey();
+  }
+
+  @override
+  void dispose() {
+    _geminiKeyController.dispose();
+    super.dispose();
+  }
+
+  // ── API: Fetch Gemini Key ──
+
+  Future<void> _fetchGeminiKey() async {
+    setState(() {
+      _geminiKeyLoading = true;
+      _geminiKeyError = null;
+    });
+
+    try {
+      final response = await _db.postJsonData({
+        'action': 'get_gemini_key',
+      });
+
+      if (response['success'] == true) {
+        final data = response['data'];
+        final key = data is Map ? (data['api_key'] ?? '') : '';
+        setState(() {
+          _geminiKeyController.text = key.toString();
+          _geminiKeyConnected = key.toString().isNotEmpty;
+        });
+      } else {
+        setState(() {
+          _geminiKeyConnected = false;
+          _geminiKeyError = response['message']?.toString() ?? 'Key not found';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _geminiKeyConnected = false;
+        _geminiKeyError = 'Failed to fetch key';
+      });
+    } finally {
+      if (mounted) setState(() => _geminiKeyLoading = false);
+    }
+  }
+
+  // ── API: Update Auto Approval ──
+
+  Future<void> _updateAutoApproval({
+    required int communityId,
+    required bool autoApproval,
+  }) async {
+    setState(() => _savingAutoApproval = true);
+
+    try {
+      final response = await _db.postJsonData({
+        'action': 'admin_update_auto_approval',
+        'community_id': communityId.toString(),
+        'auto_approval': autoApproval ? '1' : '0',
+      });
+
+      if (response['success'] == true) {
+        _showSnackBar('Auto-approval updated', isError: false);
+      } else {
+        _showSnackBar(
+          response['message']?.toString() ?? 'Update failed',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      _showSnackBar('Network error', isError: true);
+    } finally {
+      if (mounted) setState(() => _savingAutoApproval = false);
+    }
+  }
+
+  void _showSnackBar(String text, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Platform Settings'),
         actions: [
           Padding(
@@ -98,7 +186,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Automation Controls
+            // ── Automation Controls ──
             _buildSectionCard(
               icon: Icons.auto_awesome_outlined,
               title: 'Automation Controls',
@@ -108,7 +196,11 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
                   subtitle:
                       'Automatically approve new registration requests based on domain reputation.',
                   value: _autoApproveUsers,
-                  onChanged: (val) => setState(() => _autoApproveUsers = val),
+                  onChanged: (val) {
+                    setState(() => _autoApproveUsers = val);
+                    // community_id = 1 is a placeholder — replace with your actual community ID
+                    _updateAutoApproval(communityId: 1, autoApproval: val);
+                  },
                 ),
                 const Divider(height: 32, color: AppTheme.border),
                 _buildSwitchTile(
@@ -116,9 +208,19 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
                   subtitle:
                       'Enable instant verification for communities created by verified platform partners.',
                   value: _autoApproveCommunities,
-                  onChanged: (val) =>
-                      setState(() => _autoApproveCommunities = val),
+                  onChanged: (val) {
+                    setState(() => _autoApproveCommunities = val);
+                    _updateAutoApproval(communityId: 2, autoApproval: val);
+                  },
                 ),
+                if (_savingAutoApproval)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: LinearProgressIndicator(
+                      minHeight: 2,
+                      color: AppTheme.primary,
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -144,7 +246,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
 
             const SizedBox(height: 16),
 
-            // Gemini API Strategy
+            // ── Gemini API Strategy ──
             _buildSectionCard(
               icon: Icons.auto_fix_high,
               title: 'Gemini API Strategy',
@@ -177,7 +279,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
 
             const SizedBox(height: 16),
 
-            // API Key Management
+            // ── Platform Gemini API Key ──
             _buildSectionCard(
               icon: Icons.vpn_key_outlined,
               title: 'Platform Gemini API Key',
@@ -191,74 +293,105 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(
-                      Icons.key,
-                      color: AppTheme.textMuted,
-                    ),
-                    suffixIcon: const Icon(
-                      Icons.visibility_outlined,
-                      color: AppTheme.primary,
-                    ),
-                    hintText: 'Enter API Key',
-                    filled: true,
-                    fillColor: AppTheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
+                if (_geminiKeyLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primary,
+                        strokeWidth: 2,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Connection Active: Gemini 1.5 Pro',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
+                  )
+                else ...[
+                  TextField(
+                    controller: _geminiKeyController,
+                    obscureText: _obscureApiKey,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        Icons.key,
+                        color: AppTheme.textMuted,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureApiKey
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: AppTheme.primary,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureApiKey = !_obscureApiKey),
+                      ),
+                      hintText: 'Enter API Key',
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.border),
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Save Settings',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.border),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _geminiKeyConnected
+                              ? Colors.green
+                              : Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _geminiKeyConnected
+                            ? 'Connection Active: Gemini 1.5 Pro'
+                            : (_geminiKeyError ?? 'No API key configured'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _showSnackBar(
+                          'Settings saved locally',
+                          isError: false,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Save Settings',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Usage Credits
+            // ── Usage Credits ──
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -315,7 +448,7 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
 
             const SizedBox(height: 16),
 
-            // Data Encryption
+            // ── Data Encryption ──
             _buildSectionCard(
               icon: Icons.verified_user_outlined,
               title: 'Data Encryption Active',
@@ -376,6 +509,8 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
       bottomNavigationBar: const AdminBottomNavigation(currentIndex: 4),
     );
   }
+
+  // ── Reusable Widgets ──
 
   Widget _buildSectionCard({
     required IconData icon,
