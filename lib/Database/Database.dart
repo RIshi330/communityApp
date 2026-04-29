@@ -187,7 +187,10 @@ class Database {
   }
 
   /// Send API requests as JSON for endpoints that expect nested objects/arrays.
-  Future<Map> postJsonData(Map<String, dynamic> postBody) async {
+  Future<Map> postJsonData(
+    Map<String, dynamic> postBody, {
+    String endpointUrl = apiUrl,
+  }) async {
     var result = {};
 
     final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
@@ -195,7 +198,7 @@ class Database {
 
     try {
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse(endpointUrl),
         body: jsonEncode(postBody),
         headers: {
           'APP_ID': appId.toString(),
@@ -247,7 +250,7 @@ class Database {
         "status": 300,
         "error": "Server not reachable - ${e.toString()}",
         "debug_info": {
-          "base_url": apiUrl,
+          "base_url": endpointUrl,
           "error_type": e.runtimeType.toString(),
           "error_message": e.toString(),
         },
@@ -255,6 +258,10 @@ class Database {
     }
 
     return result;
+  }
+
+  Future<Map> postAuthJsonData(Map<String, dynamic> postBody) {
+    return postJsonData(postBody, endpointUrl: authApiUrl);
   }
 
   /// Get current session ID
