@@ -603,7 +603,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
 
     try {
       final response = await _database.getData({
-        'action': 'get_home_feed',
+        'action': 'get_marketplace_packages',
       });
 
       if (response['success'] == true || response['status'] == 200) {
