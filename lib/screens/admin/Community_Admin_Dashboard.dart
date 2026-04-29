@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/services/auth_service.dart';
+import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 import 'package:commity_app1/screens/admin/community_manager.dart';
 import 'package:commity_app1/screens/admin/Community_Admin_Profile.dart';
@@ -355,7 +357,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _drawerItem(Icons.settings_outlined, 'Settings', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlatformSettingsScreen()))),
       ])),
       const Divider(height: 1),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _drawerItem(Icons.logout_rounded, 'Logout', color: AppTheme.error)),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _drawerItem(Icons.logout_rounded, 'Logout', color: AppTheme.error, onTap: () => _handleAdminLogout())),
       const SizedBox(height: 20),
     ]));
   }
@@ -385,6 +387,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  Future<void> _handleAdminLogout() async {
+    Navigator.pop(context); // Close the drawer
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to logout from the admin panel?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await AuthService.clearSession();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthProduction()),
+        (route) => false,
+      );
+    }
   }
 
   // ── Modals ──
