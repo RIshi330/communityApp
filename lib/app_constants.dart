@@ -8,7 +8,7 @@ const String baseUrl = "https://1jammu.in/seller/android/";
 const String apiUrl = "${baseUrl}index.php";
 const String authApiUrl = "${baseUrl}auth.php";
 const String baseUrlLegacy = "https://1jammu.in/seller/android/";
-const String buyItemApiUrl = "${baseUrl}/index.php";
+const String buyItemApiUrl = "${baseUrl}index.php";
 
 const String razorpayTestKey = "rzp_test_pi2fEEfhC66GKs";
 const String vendorType = '2';

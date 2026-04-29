@@ -1,6 +1,8 @@
+import 'dart:convert';
+import 'package:commity_app1/app_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:commity_app1/screens/admin/admin_drawer.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const AdminProfileApp());
@@ -62,16 +64,74 @@ class AdminProfileScreen extends StatefulWidget {
 }
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
-  bool twoFactorEnabled = true;
+  bool twoFactorEnabled = false;
+  String profilePic = '';
+  String adminName = 'Admin';
+  String designation = 'N/A';
+  String createdDate = 'N/A';
+  String email = 'N/A';
+  String mobile = 'N/A';
+  String bio = 'N/A';
+  String otpCreateTime = 'N/A';
+
+  Future<void> fetchCommunityAdminProfile() async {
+    try {
+      final String url =
+          '${baseUrl}new_apis/admin/community_admin_profile.php';
+
+      final response = await http.post(
+        Uri.parse(url),
+        body: {'action': 'fetch'},
+      );
+
+      if (response.statusCode == 200) {
+        if (response.body.trim().isEmpty) {
+          throw FormatException('Server returned empty response');
+        }
+        final data = jsonDecode(response.body);
+
+        final admin = data['data']?['admin'] as Map<String, dynamic>?;
+
+        if (!mounted || admin == null) return;
+
+        setState(() {
+          profilePic = admin['profile_pic']?.toString() ?? '';
+          adminName = admin['name']?.toString() ?? 'Admin';
+          designation = admin['designation']?.toString() ?? 'N/A';
+          createdDate = admin['created_date']?.toString() ?? 'N/A';
+          email = admin['email']?.toString() ?? 'N/A';
+          mobile = admin['mobile']?.toString() ?? 'N/A';
+          bio = admin['bio']?.toString() ?? 'N/A';
+          otpCreateTime = admin['otp_create_time']?.toString() ?? 'N/A';
+        });
+      } else {
+        throw Exception('Failed to fetch: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching community admin profile: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCommunityAdminProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const AdminDrawer(),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Admin Profile'),
         actions: [
-          IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {},
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -96,13 +156,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               title: 'Personal Information',
               onEdit: () => _showEditProfileModal(),
               children: [
-                _buildInfoField('Full Name', 'Alex Johnson'),
-                _buildInfoField('Email Address', 'alex.j@comm-unity.app'),
-                _buildInfoField('Phone Number', '+1 (555) 000-1234'),
-                _buildInfoField(
-                  'Bio',
-                  'Dedicated community builder and strategic manager with over 8 years of experience in fostering inclusive digital spaces. Passionate about scalability and trust.',
-                ),
+                _buildInfoField('Full Name', adminName),
+                _buildInfoField('Designation', designation),
+                _buildInfoField('Created Date', createdDate),
+                _buildInfoField('Email Address', email),
+                _buildInfoField('Phone Number', mobile),
+                _buildInfoField('OTP Created Time', otpCreateTime),
+                _buildInfoField('Bio', bio),
               ],
             ),
 
@@ -138,12 +198,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   subtitle: 'Currently Light Mode',
                   trailing: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(10)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      _buildModeIcon(Icons.wb_sunny_outlined, true),
-                      const SizedBox(width: 4),
-                      _buildModeIcon(Icons.nightlight_outlined, false),
-                    ]),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildModeIcon(Icons.wb_sunny_outlined, true),
+                        const SizedBox(width: 4),
+                        _buildModeIcon(Icons.nightlight_outlined, false),
+                      ],
+                    ),
                   ),
                 ),
                 _buildNavigationTile(
@@ -189,11 +255,17 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
-                child: const CircleAvatar(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                ),
+                child: CircleAvatar(
                   radius: 52,
                   backgroundColor: Colors.black12,
-                  backgroundImage: NetworkImage('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200'),
+                  backgroundImage: profilePic.isNotEmpty
+                      ? NetworkImage(profilePic)
+                      : const AssetImage(avatarImage) as ImageProvider,
                 ),
               ),
               Positioned(
@@ -201,7 +273,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 bottom: 4,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
                   child: const Icon(Icons.edit, size: 16, color: Colors.white),
                 ),
               ),
@@ -218,33 +294,69 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Alex Johnson', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+          Text(
+            adminName,
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 4),
-          Row(children: [
-            const Icon(Icons.verified, color: AppTheme.primary, size: 18),
-            const SizedBox(width: 4),
-            const Text('Super Admin', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600, fontSize: 14)),
-          ]),
+          Row(
+            children: [
+              const Icon(Icons.verified, color: AppTheme.primary, size: 18),
+              const SizedBox(width: 4),
+              Text(
+                designation == 'N/A' ? 'Super Admin' : designation,
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          const Text('Joined January 12, 2023', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          Text(
+            'Created $createdDate',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => _showEditProfileModal(),
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(vertical: 14)),
-                child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _showEditProfileModal(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Save Changes',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primary, backgroundColor: AppTheme.primarySoft, side: BorderSide.none, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(vertical: 14)),
-                child: const Text('Log Out', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    backgroundColor: AppTheme.primarySoft,
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Log Out', style: TextStyle(fontSize: 12)),
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
         ],
       ),
     );
@@ -253,119 +365,257 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Widget _buildMetricsGrid() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(children: [
-        _buildMetricCard(Icons.hub_outlined, 'Communities Managed', '24'),
-        const SizedBox(height: 12),
-        _buildMetricCard(Icons.people_outline, 'Active Users', '12.8k'),
-        const SizedBox(height: 12),
-        _buildMetricCard(Icons.speed, 'Moderation Score', '98.4%'),
-      ]),
+      child: Column(
+        children: [
+          _buildMetricCard(Icons.hub_outlined, 'Communities Managed', '24'),
+          const SizedBox(height: 12),
+          _buildMetricCard(Icons.people_outline, 'Active Users', '12.8k'),
+          const SizedBox(height: 12),
+          _buildMetricCard(Icons.speed, 'Moderation Score', '98.4%'),
+        ],
+      ),
     );
   }
 
   Widget _buildMetricCard(IconData icon, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppTheme.primarySoft, borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: AppTheme.primary, size: 28),
-        ),
-        const SizedBox(width: 16),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
-        ]),
-      ]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primarySoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppTheme.primary, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSection({required String title, VoidCallback? onEdit, required List<Widget> children}) {
+  Widget _buildSection({
+    required String title,
+    VoidCallback? onEdit,
+    required List<Widget> children,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            if (onEdit != null)
-              GestureDetector(onTap: onEdit, child: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textMuted)),
-          ]),
-        ),
-        const Divider(height: 1, color: AppTheme.border),
-        ...children,
-      ]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                if (onEdit != null)
+                  GestureDetector(
+                    onTap: onEdit,
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      size: 20,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppTheme.border),
+          ...children,
+        ],
+      ),
     );
   }
 
   Widget _buildInfoField(String label, String value) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.only(bottom: 8),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.border, width: 0.5))),
-          child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-        ),
-      ]),
-    );
-  }
-
-  Widget _buildNavigationTile({required IconData icon, required String title, required String subtitle, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap ?? () {},
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(children: [
-          Icon(icon, size: 22, color: AppTheme.textMuted),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-          ])),
-          const Icon(Icons.chevron_right, color: AppTheme.textMuted),
-        ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(bottom: 8),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppTheme.border, width: 0.5),
+              ),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildToggleTile({required IconData icon, required String title, required String subtitle}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        Icon(icon, size: 22, color: AppTheme.textMuted),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-        ])),
-        Switch(
-          value: twoFactorEnabled,
-          onChanged: (v) => setState(() => twoFactorEnabled = v),
-          activeColor: AppTheme.primary,
+  Widget _buildNavigationTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap ?? () {},
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: AppTheme.textMuted),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppTheme.textMuted),
+          ],
         ),
-      ]),
+      ),
     );
   }
 
-  Widget _buildAppSettingTile({required IconData icon, required String title, required String subtitle, required Widget trailing}) {
+  Widget _buildToggleTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        Icon(icon, size: 22, color: AppTheme.textMuted),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-        ])),
-        trailing,
-      ]),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: AppTheme.textMuted),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: twoFactorEnabled,
+            onChanged: (v) => setState(() => twoFactorEnabled = v),
+            activeColor: AppTheme.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppSettingTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: AppTheme.textMuted),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          trailing,
+        ],
+      ),
     );
   }
 
@@ -375,9 +625,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       decoration: BoxDecoration(
         color: active ? Colors.white : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)] : null,
+        boxShadow: active
+            ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)]
+            : null,
       ),
-      child: Icon(icon, size: 18, color: active ? AppTheme.primary : AppTheme.textMuted),
+      child: Icon(
+        icon,
+        size: 18,
+        color: active ? AppTheme.primary : AppTheme.textMuted,
+      ),
     );
   }
 
@@ -390,127 +646,357 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.error.withOpacity(0.15)),
       ),
-      child: Row(children: [
-        const Icon(Icons.report_outlined, color: AppTheme.error, size: 24),
-        const SizedBox(width: 14),
-        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Danger Zone', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF991B1B))),
-          SizedBox(height: 2),
-          Text('Permanently delete your admin account and all data.', style: TextStyle(fontSize: 12, color: Color(0xFF991B1B))),
-        ])),
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(foregroundColor: AppTheme.error, side: const BorderSide(color: AppTheme.error), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-          child: const Text('Delete', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        ),
-      ]),
+      child: Row(
+        children: [
+          const Icon(Icons.report_outlined, color: AppTheme.error, size: 24),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Danger Zone',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF991B1B),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Permanently delete your admin account and all data.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.error,
+              side: const BorderSide(color: AppTheme.error),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text(
+              'Delete',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   // ─── EDIT PROFILE MODAL ───
   void _showEditProfileModal() {
     showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Edit Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.close, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
-            ]),
-          ),
-          const Divider(height: 1, color: AppTheme.border),
-          // Form
-          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _modalField('Full Name', 'Alex Johnson'),
-            const SizedBox(height: 16),
-            _modalField('Email Address', 'alex.j@comm-unity.app', type: TextInputType.emailAddress),
-            const SizedBox(height: 16),
-            _modalField('Phone Number', '+1 (555) 000-1234', type: TextInputType.phone),
-            const SizedBox(height: 16),
-            const Text('Bio', style: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            TextField(maxLines: 4, controller: TextEditingController(text: 'Dedicated community builder and strategic manager with over 8 years of experience in fostering inclusive digital spaces.'), decoration: InputDecoration(filled: true, fillColor: AppTheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.border)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.border)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2)))),
-          ]))),
-          // Footer
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
-            child: Row(children: [
-              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primary, backgroundColor: AppTheme.primarySoft, side: BorderSide.none, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)))),
-              const SizedBox(width: 12),
-              Expanded(child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w600)))),
-            ]),
-          ),
-        ]),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Edit Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppTheme.border),
+            // Form
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _modalField('Full Name', 'Alex Johnson'),
+                    const SizedBox(height: 16),
+                    _modalField(
+                      'Email Address',
+                      'alex.j@comm-unity.app',
+                      type: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 16),
+                    _modalField(
+                      'Phone Number',
+                      '+1 (555) 000-1234',
+                      type: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Bio',
+                      style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      maxLines: 4,
+                      controller: TextEditingController(
+                        text:
+                            'Dedicated community builder and strategic manager with over 8 years of experience in fostering inclusive digital spaces.',
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppTheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Footer
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppTheme.border)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        backgroundColor: AppTheme.primarySoft,
+                        side: BorderSide.none,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _modalField(String label, String value, {TextInputType type = TextInputType.text}) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      TextField(
-        controller: TextEditingController(text: value),
-        keyboardType: type,
-        decoration: InputDecoration(
-          filled: true, fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.border)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.border)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
+  Widget _modalField(
+    String label,
+    String value, {
+    TextInputType type = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-    ]);
+        const SizedBox(height: 8),
+        TextField(
+          controller: TextEditingController(text: value),
+          keyboardType: type,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // ─── SECURITY / OTP VERIFICATION MODAL ───
   void _showPasswordModal() {
     showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent,
+      context: context,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('Security Verification', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            IconButton(icon: const Icon(Icons.close, color: AppTheme.textMuted), onPressed: () => Navigator.pop(ctx)),
-          ]),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), shape: BoxShape.circle),
-            child: const Icon(Icons.shield_outlined, color: AppTheme.primary, size: 32),
-          ),
-          const SizedBox(height: 16),
-          const Text('Enter Verification Code', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          const Text("We've sent a 6-digit code to your email alex.j@***.app", style: TextStyle(color: AppTheme.textMuted, fontSize: 12), textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          // OTP Fields
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(6, (i) => SizedBox(
-            width: 46, height: 56,
-            child: TextField(
-              textAlign: TextAlign.center, maxLength: 1, keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(counterText: '', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.border)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2))),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Security Verification',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
             ),
-          ))),
-          const SizedBox(height: 12),
-          TextButton(onPressed: () {}, child: const Text('Resend Code', style: TextStyle(color: AppTheme.primary, fontSize: 12))),
-          const SizedBox(height: 16),
-          SizedBox(width: double.infinity, height: 52, child: ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('Verify & Continue', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          )),
-          const SizedBox(height: 8),
-        ]),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.shield_outlined,
+                color: AppTheme.primary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Enter Verification Code',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "We've sent a 6-digit code to your email alex.j@***.app",
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // OTP Fields
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(
+                6,
+                (i) => SizedBox(
+                  width: 46,
+                  height: 56,
+                  child: TextField(
+                    textAlign: TextAlign.center,
+                    maxLength: 1,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppTheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {},
+              child: const Text(
+                'Resend Code',
+                style: TextStyle(color: AppTheme.primary, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Verify & Continue',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

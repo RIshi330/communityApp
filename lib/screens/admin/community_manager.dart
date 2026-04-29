@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 import 'package:commity_app1/Database/Database.dart';
-import 'package:commity_app1/screens/admin/admin_drawer.dart';
 
 class AppTheme {
   static const Color lavender = Color(0xFF7C83FD);
@@ -109,8 +108,11 @@ class _CommunityManagementHubState extends State<CommunityManagementHub> {
     final activeCommunities = _communities.where((c) => c['status'].toString() != '0').toList();
 
     return Scaffold(
-      drawer: const AdminDrawer(),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Managed Communities'),
         actions: [
           Padding(

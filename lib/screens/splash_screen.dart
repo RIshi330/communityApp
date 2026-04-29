@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:commity_app1/screens/auth_screen.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
-import 'package:commity_app1/screens/admin/Community_Admin_Dashboard.dart';
-import 'package:commity_app1/screens/choicescreen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -97,37 +95,16 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   }
 
   Future<void> _redirectNextScreen() async {
-    final isAdmin = await AuthService.isAdminSession();
-    if (isAdmin) {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-      );
-      return;
-    }
-
     final hasValidSession = await AuthService.isSessionValid();
     if (!mounted) return;
 
-    if (hasValidSession) {
-      final hasInterests = await AuthService.hasSelectedInterests();
-      if (hasInterests) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppShell()),
-        );
-      } else {
-        final vendorId = await AuthService.getVendorId() ?? 0;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => TopicSelectionScreen(vendorId: vendorId, isEditing: false),
-          ),
-        );
-      }
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AuthProduction()),
-      );
-    }
+    final nextScreen = hasValidSession
+        ? const AppShell()
+        : const AuthProduction();
+
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => nextScreen));
   }
 
   @override
