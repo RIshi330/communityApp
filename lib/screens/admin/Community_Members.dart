@@ -120,7 +120,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     return Scaffold(
       drawer: const AdminDrawer(),
       appBar: AppBar(
-        title: const Text('Community Members'),
+        title: const Text('Members'),
         actions: [
           Stack(
             children: [
