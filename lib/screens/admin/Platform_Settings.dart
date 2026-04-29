@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
+import 'package:commity_app1/screens/admin/admin_drawer.dart';
 
 class AppTheme {
   static const Color primary = Color(0xFF7C83FD);
@@ -152,11 +153,8 @@ class _PlatformSettingsScreenState extends State<PlatformSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AdminDrawer(),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
         title: const Text('Platform Settings'),
         actions: [
           Padding(

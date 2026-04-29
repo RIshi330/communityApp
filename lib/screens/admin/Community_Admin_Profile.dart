@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:commity_app1/screens/admin/admin_drawer.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 
 void main() {
@@ -66,11 +67,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AdminDrawer(),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
         title: const Text('Admin Profile'),
         actions: [
           IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () {}),

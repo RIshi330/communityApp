@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
+import 'package:commity_app1/screens/admin/admin_drawer.dart';
 
 void main() {
   runApp(const FinancialAdminApp());
@@ -66,12 +67,9 @@ class _FinancialCenterScreenState extends State<FinancialCenterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AdminDrawer(),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: const Text('Financial Admin'),
+        title: const Text('Financial Center'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),

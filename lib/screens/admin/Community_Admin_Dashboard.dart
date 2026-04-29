@@ -10,6 +10,7 @@ import 'package:commity_app1/screens/admin/moderation.dart' hide AppTheme;
 import 'package:commity_app1/screens/admin/team_and_partner.dart';
 import 'package:commity_app1/screens/admin/wallet.dart' hide AppTheme;
 import 'package:commity_app1/screens/admin/Platform_Settings.dart' hide AppTheme;
+import 'package:commity_app1/screens/admin/admin_drawer.dart';
 
 class AppTheme {
   static const Color primary = Color(0xFF7C83FD);
@@ -51,7 +52,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
         title: const Text('Community Admin'),
         actions: [
           _badgeIcon(Icons.chat_bubble_outline, '3'),
@@ -69,7 +69,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(),
+      drawer: const AdminDrawer(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
