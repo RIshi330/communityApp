@@ -24,30 +24,39 @@ class Community {
 
 // Package Model — supports both local and API data
 class Package {
+  final int? id;
   final String title;
   final String community;
   final List<String> badges;
-  final String? reach;
-  final String? ctr;
+  final int? impressions;
+  final int? clicks;
+  final List<String> audience;
+  final List<String> interests;
   final String? duration;
   final String price;
   final String type;
   final String pricingModel;
+  final int orders;
+  final double revenue;
 
   Package({
+    this.id,
     required this.title,
     required this.community,
     required this.badges,
-    this.reach,
-    this.ctr,
+    this.impressions,
+    this.clicks,
+    this.audience = const [],
+    this.interests = const [],
     this.duration,
     required this.price,
     required this.type,
     required this.pricingModel,
+    this.orders = 0,
+    this.revenue = 0.0,
   });
 
   /// Parse from API JSON response.
-  /// Adjust field names below to match your actual API response keys.
   factory Package.fromJson(Map<String, dynamic> json) {
     // Badges: accept comma-separated string OR a JSON array
     List<String> parseBadges(dynamic raw) {
@@ -56,31 +65,99 @@ class Package {
       return raw.toString().split(',').map((e) => e.trim()).toList();
     }
 
+    final priceVal = json['price'] ?? json['fixed_price'] ?? 0;
+    
+    // Capitalize pricing model for UI filtering match
+    String rawPricing = json['pricing_type']?.toString() ?? json['pricingModel']?.toString() ?? 'Fixed';
+    String formattedPricing = rawPricing.isNotEmpty 
+        ? '${rawPricing[0].toUpperCase()}${rawPricing.substring(1).toLowerCase()}' 
+        : 'Fixed';
+    if (formattedPricing == 'Per_action') formattedPricing = 'Per Action';
+
     return Package(
-      title:
-          json['title']?.toString() ??
-          json['package_name']?.toString() ??
-          'Unknown',
-      community:
-          json['community']?.toString() ??
-          json['community_name']?.toString() ??
-          '',
+      id: json['id'] is int ? json['id'] as int : (int.tryParse(json['id']?.toString() ?? '') ?? null),
+      title: json['name']?.toString() ?? json['title']?.toString() ?? 'Unknown',
+      community: json['community']?.toString() ?? json['community_name']?.toString() ?? 'General',
       badges: parseBadges(json['badges'] ?? json['tags']),
-      reach: json['reach']?.toString(),
-      ctr: json['ctr']?.toString(),
+      impressions: json['impressions'] is int
+          ? json['impressions'] as int
+          : int.tryParse(json['impressions']?.toString() ?? ''),
+      clicks: json['clicks'] is int ? json['clicks'] as int : int.tryParse(json['clicks']?.toString() ?? ''),
+      audience: (json['audience'] is List) ? (json['audience'] as List).map((e) => e.toString()).toList() : [],
+      interests: (json['interests'] is List) ? (json['interests'] as List).map((e) => e.toString()).toList() : [],
       duration: json['duration']?.toString(),
-      price: json['price']?.toString() != null ? '₹${json['price']}' : '₹0',
-      type:
-          json['type']?.toString() ??
-          json['package_type']?.toString() ??
-          'Product',
-      pricingModel:
-          json['pricing_model']?.toString() ??
-          json['pricingModel']?.toString() ??
-          'Fixed',
+      price: '₹${priceVal.toString()}',
+      type: json['type']?.toString() ?? 'Product', // API doesn't return type currently, fallback to Product
+      pricingModel: formattedPricing,
+      orders: json['orders'] is int ? json['orders'] as int : (int.tryParse(json['orders']?.toString() ?? '') ?? 0),
+      revenue: json['revenue'] is num ? (json['revenue'] as num).toDouble() : (double.tryParse(json['revenue']?.toString() ?? '') ?? 0.0),
     );
   }
 }
+
+// ─── Promotion API Service ──────────────────────────────────────────────────
+class PromotionApiService {
+  static final Database _db = Database();
+
+  static Future<Map<String, dynamic>> addPackage(Map<String, dynamic> packageData, {bool isDraft = false}) async {
+    final payload = {
+      'action': isDraft ? 'add_package_draft' : 'add_package',
+      ...packageData,
+    };
+    return await _db.getData(payload);
+  }
+
+  static Future<Map<String, dynamic>> getPackages({int? status, String? search, int? communityId, String? duration, String? category, String? sort}) async {
+    final payload = {
+      'action': 'get_packages',
+      if (status != null) 'status': status,
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (communityId != null) 'community_id': communityId,
+      if (duration != null && duration.isNotEmpty) 'duration': duration,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (sort != null && sort.isNotEmpty) 'sort': sort,
+    };
+    return await _db.getData(payload);
+  }
+
+  static Future<Map<String, dynamic>> getPackageOrders({String? status, String? search, String? sort, int page = 1}) async {
+    final payload = {
+      'action': 'get_package_orders',
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (sort != null && sort.isNotEmpty) 'sort': sort,
+      'page': page,
+    };
+    return await _db.getData(payload);
+  }
+
+  static Future<Map<String, dynamic>> getPackageDetails(int id) async {
+    return await _db.getData({
+      'action': 'get_package_details',
+      'id': id,
+    });
+  }
+
+  static Future<Map<String, dynamic>> saveSchedule({
+    required int orderId,
+    required String title,
+    required String date,
+    required String time,
+    required String frequency,
+    required int duration,
+  }) async {
+    return await _db.getData({
+      'action': 'save_schedule',
+      'order_id': orderId,
+      'title': title,
+      'date': date,
+      'time': time,
+      'frequency': frequency,
+      'duration': duration,
+    });
+  }
+}
+
 
 class MarketplaceScreen2 extends StatefulWidget {
   const MarketplaceScreen2({super.key});
@@ -129,19 +206,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
     });
 
     try {
-      final vendorId = await AuthService.getVendorIdString();
-      final response = await _database.getData({
-        'action': 'get_packages',
-        if (vendorId != null) 'vendor_id': vendorId,
-      });
+      // Use the newly created API service, requesting active packages (status: 1)
+      final response = await PromotionApiService.getPackages(status: 1);
 
       if (response['status'] == 200 || response['success'] == true) {
         // ── Parse packages ──────────────────────────────────────────────────
         List<dynamic> rawPackages = [];
-        if (response['packages'] != null) {
-          rawPackages = response['packages'];
-        } else if (response['data'] != null) {
+        if (response['data'] != null && response['data'] is List) {
           rawPackages = response['data'];
+        } else if (response['packages'] != null) {
+          rawPackages = response['packages'];
         } else if (response['promotion_packages'] != null) {
           rawPackages = response['promotion_packages'];
         }
