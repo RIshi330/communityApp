@@ -603,7 +603,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen2> {
 
     try {
       final response = await _database.getData({
-        'action': 'get_marketplace_packages',
+        'action': 'get_packages',
+        'status': 1,
       });
 
       if (response['success'] == true || response['status'] == 200) {
@@ -2499,6 +2500,7 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
   final _ecashCtrl = TextEditingController();
   final _ebankCtrl = TextEditingController();
   final _couponCtrl = TextEditingController();
+  final _campaignTitleCtrl = TextEditingController();
 
   final int ecashBal = 500;
   final int ebankBal = 1200;
@@ -2509,6 +2511,9 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
   late bool _push;
   late bool _infl;
   String _opportunity = 'Select Opportunity';
+  DateTime? _scheduleDate;
+  TimeOfDay? _scheduleTime;
+  String _scheduleFrequency = 'one-time';
 
   Package get pkg => widget.package;
 
@@ -2557,6 +2562,7 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
     _ecashCtrl.dispose();
     _ebankCtrl.dispose();
     _couponCtrl.dispose();
+    _campaignTitleCtrl.dispose();
     super.dispose();
   }
 
@@ -2628,6 +2634,10 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
 
               // ── Campaign Setup Card ───────────────────────────────────────
               _campaignCard(),
+              const SizedBox(height: 14),
+
+              // ── Campaign Schedule Card ────────────────────────────────────
+              _campaignScheduleCard(),
               const SizedBox(height: 14),
 
               // ── Wallet Card ───────────────────────────────────────────────
@@ -2984,7 +2994,7 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
       children: [
         _sectionHeader(Icons.campaign_rounded, 'Campaign Setup'),
         const SizedBox(height: 12),
-        const _InputField(hint: 'Campaign Title', icon: Icons.edit_outlined),
+        _InputField(hint: 'Campaign Title', icon: Icons.edit_outlined, controller: _campaignTitleCtrl),
         const SizedBox(height: 10),
         _DropdownField(
           value: _opportunity,
@@ -2996,6 +3006,99 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
             'Event Promotion',
           ],
           onChanged: (v) => setState(() => _opportunity = v ?? _opportunity),
+        ),
+      ],
+    ),
+  );
+
+  Widget _campaignScheduleCard() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: _cardDecor(),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(Icons.calendar_month_rounded, 'Campaign Schedule'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) setState(() => _scheduleDate = date);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.date_range, size: 16, color: AppColors.accent),
+                      const SizedBox(width: 8),
+                      Text(
+                        _scheduleDate == null
+                            ? 'Select Date'
+                            : '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: _scheduleDate == null ? AppColors.muted : AppColors.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (time != null) setState(() => _scheduleTime = time);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 16, color: AppColors.accent),
+                      const SizedBox(width: 8),
+                      Text(
+                        _scheduleTime == null
+                            ? 'Select Time'
+                            : _scheduleTime!.format(context),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: _scheduleTime == null ? AppColors.muted : AppColors.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _DropdownField(
+          value: _scheduleFrequency,
+          items: const ['one-time', 'daily', 'weekly', 'monthly'],
+          onChanged: (v) => setState(() => _scheduleFrequency = v ?? _scheduleFrequency),
         ),
       ],
     ),
@@ -3337,21 +3440,62 @@ class _BuyModelScreenState extends State<BuyModelScreen> {
   Widget _payButton() => SizedBox(
     width: double.infinity,
     child: ElevatedButton(
-      onPressed: () {
+      onPressed: () async {
+        if (_campaignTitleCtrl.text.isEmpty || _scheduleDate == null || _scheduleTime == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a Campaign Title and select a Schedule Date & Time.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // Since we don't have a create_order API yet, we simulate an order_id
+        final mockOrderId = DateTime.now().millisecondsSinceEpoch % 1000000;
+
+        // Parse package duration safely (default to 7 if parsing fails)
+        int durationValue = 7;
+        if (pkg.duration != null) {
+          final digits = pkg.duration!.replaceAll(RegExp(r'[^0-9]'), '');
+          if (digits.isNotEmpty) durationValue = int.parse(digits);
+        }
+
+        final scheduleDateStr = '${_scheduleDate!.year}-${_scheduleDate!.month.toString().padLeft(2, '0')}-${_scheduleDate!.day.toString().padLeft(2, '0')}';
+        final scheduleTimeStr = '${_scheduleTime!.hour.toString().padLeft(2, '0')}:${_scheduleTime!.minute.toString().padLeft(2, '0')}:00';
+
+        final response = await Database().getData({
+          'action': 'save_schedule',
+          'order_id': mockOrderId.toString(),
+          'title': _campaignTitleCtrl.text,
+          'date': scheduleDateStr,
+          'time': scheduleTimeStr,
+          'frequency': _scheduleFrequency,
+          'duration': durationValue.toString(),
+        });
+
+        if (!mounted) return;
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '🎉 ${pkg.title} — Payment of ₹$_finalPrice successful!',
+
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 ${pkg.title} — Payment of ₹$_finalPrice successful! Schedule saved.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
             ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Payment simulated, but scheduling failed.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
             ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+          );
+        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.accent,
@@ -3661,9 +3805,11 @@ class _PriceRow extends StatelessWidget {
 class _InputField extends StatelessWidget {
   final String hint;
   final IconData icon;
-  const _InputField({required this.hint, required this.icon});
+  final TextEditingController? controller;
+  const _InputField({required this.hint, required this.icon, this.controller});
   @override
   Widget build(BuildContext context) => TextField(
+    controller: controller,
     style: const TextStyle(fontSize: 13, color: AppColors.text),
     decoration: InputDecoration(
       hintText: hint,
