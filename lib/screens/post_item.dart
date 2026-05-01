@@ -10,6 +10,7 @@ class PostItem extends StatefulWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onReaction;
   final VoidCallback? onRepost;
+  final VoidCallback? onDM;
 
   const PostItem({
     Key? key,
@@ -20,6 +21,7 @@ class PostItem extends StatefulWidget {
     this.onDelete,
     this.onReaction,
     this.onRepost,
+    this.onDM,
   }) : super(key: key);
 
   @override
@@ -316,6 +318,17 @@ class _PostItemState extends State<PostItem>
                   size: 26,
                 ),
                 onPressed: widget.onShare,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 16),
+              IconButton(
+                icon: const Icon(
+                  Icons.mail_outline,
+                  color: Colors.black,
+                  size: 26,
+                ),
+                onPressed: widget.onDM,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),

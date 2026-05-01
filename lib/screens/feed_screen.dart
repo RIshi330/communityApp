@@ -19,6 +19,7 @@ import 'package:commity_app1/screens/product_shop/productshop_btc.dart';
 import 'package:commity_app1/screens/User_screens/PromotionMarketplacePackage.dart';
 import 'package:commity_app1/screens/seller_bank_accounts_screen.dart';
 import 'package:commity_app1/screens/wallet_screen.dart';
+import 'package:commity_app1/screens/User_screens/followingFollowersList.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:convert' as json;
 
@@ -1254,6 +1255,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 onDelete: () => _deletePost(post.id),
                                 onReaction: () => _handleReaction(post.id),
                                 onRepost: () => _handleRepost(post.id),
+                                onDM: () => _handleDM(post),
                               );
                             }, childCount: _filteredFeedEntries.length + 1),
                           ),
@@ -2149,7 +2151,34 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
           ),
-          _buildShareOption(Icons.send_outlined, 'Send in Direct'),
+          InkWell(
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SendDirectScreen(
+                    postId: post.id,
+                    postCaption: post.caption,
+                    postImages: post.postImages,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.send_outlined, color: Colors.black),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'Send in Direct',
+                    style: TextStyle(color: Colors.black, fontSize: 15),
+                  ),
+                ],
+              ),
+            ),
+          ),
           _buildShareOption(Icons.link, 'Copy link'),
           _buildShareOption(Icons.share_outlined, 'Share to...'),
           _buildShareOption(Icons.bookmark_border, 'Add to favorites'),
@@ -2184,4 +2213,14 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
     ),
   );
+
+  // 💬 OPEN DIRECT MESSAGE SCREEN
+  void _handleDM(Post post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SendDirectScreen(postId: post.id),
+      ),
+    );
+  }
 }

@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:commity_app1/model/post_model.dart';
+import 'package:commity_app1/model/user_model.dart';
 import 'package:commity_app1/screens/setting_screen.dart';
 import 'package:commity_app1/theme.dart';
 import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/services/auth_service.dart';
+import 'package:commity_app1/screens/User_screens/followers.dart';
+import 'package:commity_app1/screens/User_screens/following.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -778,6 +781,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  UserModel _currentUserModel() {
+    return UserModel(
+      uid: _vendorId,
+      username: _name.isNotEmpty ? _name : 'user',
+      displayName: _name,
+      profileImageUrl: _profileImage,
+      bio: _bio1,
+      bioLines: const [],
+      postsCount: _allPosts.length,
+      followersCount: _followersCount,
+      followingCount: _followingCount,
+      isPrivate: false,
+      isVerified: false,
+    );
+  }
+
   Widget _buildPhotosTab() {
     final posts = _allPosts;
     return SingleChildScrollView(
@@ -1525,22 +1544,17 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _openFollowers() => Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => FriendsScreen(
-        username: _name,
+      builder: (_) => FollowersScreen(
+        user: _currentUserModel(),
         initialTab: 0,
-        followers: _followers,
-        following: _following,
       ),
     ),
   );
   void _openFollowing() => Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => FriendsScreen(
-        username: _name,
-        initialTab: 1,
-        followers: _followers,
-        following: _following,
+      builder: (_) => FollowingScreen(
+        user: _currentUserModel(),
       ),
     ),
   );

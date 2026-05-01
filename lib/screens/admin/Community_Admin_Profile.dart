@@ -65,6 +65,7 @@ class AdminProfileScreen extends StatefulWidget {
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool twoFactorEnabled = false;
+  bool _bioExpanded = false;
   String profilePic = '';
   String adminName = 'Admin';
   String designation = 'N/A';
@@ -74,15 +75,49 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   String bio = 'N/A';
   String otpCreateTime = 'N/A';
 
+  // Format date to "15 August 2022" format
+  String _formatDate(String dateTimeStr) {
+    if (dateTimeStr.isEmpty || dateTimeStr == 'N/A') return 'N/A';
+    try {
+      final dateTime = DateTime.parse(dateTimeStr);
+      final months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
+    } catch (e) {
+      return dateTimeStr;
+    }
+  }
+
+  // Format time to "10:30 AM, 15 August 2022" format
+  String _formatDateTime(String dateTimeStr) {
+    if (dateTimeStr.isEmpty || dateTimeStr == 'N/A') return 'N/A';
+    try {
+      final dateTime = DateTime.parse(dateTimeStr);
+      final months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      final h = dateTime.hour % 12 == 0 ? 12 : dateTime.hour % 12;
+      final m = dateTime.minute.toString().padLeft(2, '0');
+      final ampm = dateTime.hour < 12 ? 'AM' : 'PM';
+      return '$h:$m $ampm, ${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
+    } catch (e) {
+      return dateTimeStr;
+    }
+  }
+
   Future<void> fetchCommunityAdminProfile() async {
     try {
-      final String url =
-          '${baseUrl}new_apis/admin/community_admin_profile.php';
+      final String url = '${baseUrl}new_apis/admin/community_admin_profile.php';
 
       final response = await http.post(
         Uri.parse(url),
         body: {'action': 'fetch'},
       );
+
+      print(response.body);
 
       if (response.statusCode == 200) {
         if (response.body.trim().isEmpty) {
@@ -158,11 +193,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               children: [
                 _buildInfoField('Full Name', adminName),
                 _buildInfoField('Designation', designation),
-                _buildInfoField('Created Date', createdDate),
+                _buildInfoField('Created Date', _formatDate(createdDate)),
                 _buildInfoField('Email Address', email),
                 _buildInfoField('Phone Number', mobile),
-                _buildInfoField('OTP Created Time', otpCreateTime),
-                _buildInfoField('Bio', bio),
+                _buildInfoField('OTP Created Time', _formatDateTime(otpCreateTime)),
+                _buildBioField('Bio', bio),
               ],
             ),
 
@@ -315,7 +350,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Created $createdDate',
+            'Created ${_formatDate(createdDate)}',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -490,6 +525,84 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               value,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBioField(String label, String value) {
+    final maxLines = 3;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          AnimatedCrossFade(
+            firstChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _bioExpanded = true),
+                  child: Text(
+                    'Load More',
+                    style: const TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _bioExpanded = false),
+                  child: Text(
+                    'Show Less',
+                    style: const TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState:
+                _bioExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
           ),
         ],
       ),
