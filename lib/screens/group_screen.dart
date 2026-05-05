@@ -2,6 +2,7 @@ import 'package:commity_app1/screens/commity_admin.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
 import 'package:commity_app1/screens/group_model.dart';
 import 'package:commity_app1/screens/User_screens/CommunityProfile.dart';
+import 'package:commity_app1/screens/User_screens/CommunityManager.dart';
 import 'package:commity_app1/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -870,10 +871,7 @@ class _GroupsScreenState extends State<GroupsScreen>
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CommunityPrivateAdminView(
-                          groupName: community['community_title'] ?? '',
-                          privacy: community['visibility'] ?? 'public',
-                        ),
+                        builder: (_) => CommunityAdminScreen(),
                       ),
                     ),
                     style: ElevatedButton.styleFrom(

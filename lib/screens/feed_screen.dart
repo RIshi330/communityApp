@@ -201,7 +201,7 @@ class _FeedScreenState extends State<FeedScreen> {
       };
 
       debugPrint('🔵 Feed API Request: $requestParams');
-      final response = await database.getData(requestParams);
+      final response = await database.postJsonData(requestParams);
       debugPrint('🟢 Feed API Response Status: ${response['success']}');
 
       // Optionally log debug info if present
