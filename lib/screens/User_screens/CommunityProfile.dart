@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../Database/Database.dart';
 import '../../services/auth_service.dart';
@@ -50,11 +51,45 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   bool _isJoining = false;
   String? _errorMessage;
   Map<String, dynamic> _community = {};
+  late Razorpay _razorpay;
+  String? _pendingPaymentVendorId;
 
   @override
   void initState() {
     super.initState();
+    _initializeRazorpay();
     _fetchCommunityDetails();
+  }
+
+  void _initializeRazorpay() {
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    final vendorId = _pendingPaymentVendorId;
+    if (vendorId == null || vendorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment completed, but join context was lost.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    _verifyCommunityPayment(vendorId, response);
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Payment failed: ${response.message}'), backgroundColor: Colors.red),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External wallet: ${response.walletName}')),
+    );
   }
 
   /// Check if the API response indicates success
@@ -108,7 +143,19 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   Future<void> _joinCommunity() async {
     setState(() => _isJoining = true);
     try {
-      final vendorId = await AuthService.getVendorIdString();
+      final vendorIdInt = await AuthService.getVendorId();
+      final vendorId = vendorIdInt?.toString() ?? '';
+      final joiningRule = _community['joining_rule']?.toString() ?? 'free';
+      final joiningFee = double.tryParse(_community['joining_fee']?.toString() ?? '0') ?? 0.0;
+
+      // For paid communities - show payment dialog
+      if (joiningRule != 'free' && joiningFee > 0) {
+        setState(() => _isJoining = false);
+        _showPaymentDialog(vendorId);
+        return;
+      }
+
+      // For free communities - direct join
       final database = Database();
       final response = await database.getData({
         'action': 'join_community',
@@ -125,7 +172,6 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Refresh details to get updated role/status
         _fetchCommunityDetails();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,9 +194,163 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
     }
   }
 
+  void _showPaymentDialog(String vendorId) {
+    final joiningFee = double.tryParse(_community['joining_fee']?.toString() ?? '0') ?? 0.0;
+    final title = _community['community_title']?.toString() ?? 'Community';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Join Premium Community'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E8FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Text('Joining Fee: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    '₹${joiningFee.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF7C3AED),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Pay the joining fee to become a member of this exclusive community and access all content.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _initiatePayment(vendorId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C83FD),
+            ),
+            child: Text('Pay ₹${joiningFee.toStringAsFixed(0)}'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _initiatePayment(String vendorId) async {
+    try {
+      final db = Database();
+
+      Map<String, String> postBody = {
+        'make_payment': '1',
+        'community_id': widget.groupId,
+        'vendor_id': vendorId,
+      };
+
+      final paymentResponse = await db.getData(postBody);
+
+      if (!_isSuccessResponse(paymentResponse)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(paymentResponse['message']?.toString() ?? paymentResponse['error']?.toString() ?? 'Payment gateway error')),
+        );
+        return;
+      }
+
+      final String key = (await db.getRazorpayKey()) ?? paymentResponse['razorpay_key']?.toString() ?? paymentResponse['key']?.toString() ?? '';
+      final String razorpayOrderId = paymentResponse['razorpay_order_id']?.toString() ?? '';
+      final double joiningFee = double.tryParse(paymentResponse['amount_to_pay']?.toString() ?? _community['joining_fee']?.toString() ?? '0') ?? 0.0;
+
+      if (key.isEmpty || razorpayOrderId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment initialization failed')),
+        );
+        return;
+      }
+
+      _pendingPaymentVendorId = vendorId;
+
+      var options = {
+        'key': key,
+        'amount': (joiningFee * 100).toInt(),
+        'order_id': razorpayOrderId,
+        'name': _community['community_title'] ?? 'Community',
+        'description': 'Community Joining Fee',
+        'prefill': {'contact': '', 'email': ''},
+        'external': {
+          'wallets': ['paytm']
+        }
+      };
+
+      _razorpay.open(options);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment error: $e')),
+      );
+    }
+  }
+
+  Future<void> _verifyCommunityPayment(String vendorId, PaymentSuccessResponse response) async {
+    try {
+      final database = Database();
+      final verifyResponse = await database.getData({
+        'verifyCommunityPayment': '1',
+        'community_id': widget.groupId,
+        'vendor_id': vendorId,
+        'payment_id': response.paymentId ?? '',
+        'order_id': response.orderId ?? '',
+        'signature': response.signature ?? '',
+      });
+
+      if (_isSuccessResponse(verifyResponse)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully joined community!'), backgroundColor: Colors.green),
+        );
+        _fetchCommunityDetails();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(verifyResponse['message']?.toString() ?? verifyResponse['error']?.toString() ?? 'Payment verified, but joining failed')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error verifying payment: $e')),
+      );
+    } finally {
+      _pendingPaymentVendorId = null;
+    }
+  }
+
   String _formatCount(int count) {
     if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
   }
 
   @override
@@ -503,7 +703,9 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                               ? 'Already Joined ✓'
                               : isPending
                                   ? 'Request Pending'
-                                  : 'Join Community',
+                                  : joiningRule == 'free' || joiningRule == 'Free'
+                                      ? 'Join Community'
+                                : 'Pay ₹${(double.tryParse(_community['joining_fee']?.toString() ?? '0') ?? 0.0).toStringAsFixed(0)} to Join',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),

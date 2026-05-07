@@ -102,6 +102,8 @@ class _DiscoverCommunitiesScreenState extends State<DiscoverCommunitiesScreen> {
   bool isLoading = true;
   late Razorpay _razorpay;
   String? razorpayKey;
+  Community? _pendingPaymentCommunity;
+  String? _pendingPaymentVendorId;
 
   @override
   void initState() {
@@ -118,45 +120,17 @@ class _DiscoverCommunitiesScreenState extends State<DiscoverCommunitiesScreen> {
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment successful! Joining community...'), backgroundColor: Colors.green),
-    );
-    // Payment successful - proceed with joining
-    // The actual join will be handled after the payment completes
-  }
+    final community = _pendingPaymentCommunity;
+    final vendorId = _pendingPaymentVendorId;
 
-  Future<void> _completePaymentJoin(Community community, String vendorId) async {
-    try {
-      final db = Database();
-      Map<String, String> postBody = {
-        'action': 'join_community',
-        'community_id': community.id,
-        'vendor_id': vendorId,
-      };
-      
-      final response = await db.getData(postBody);
-      
-      if (_isSuccessResponse(response)) {
-        // Find and update the community in the list
-        int index = communities.indexWhere((c) => c.id == community.id);
-        if (index != -1) {
-          setState(() {
-            communities[index].isJoined = true;
-          });
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully joined community!'), backgroundColor: Colors.green),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response['message'] ?? 'Failed to join'}')),
-        );
-      }
-    } catch (e) {
+    if (community == null || vendorId == null || vendorId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error completing join: $e')),
+        const SnackBar(content: Text('Payment completed, but join context was lost.'), backgroundColor: Colors.red),
       );
+      return;
     }
+
+    _verifyCommunityPayment(community, vendorId, response);
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -341,24 +315,39 @@ class _DiscoverCommunitiesScreenState extends State<DiscoverCommunitiesScreen> {
     try {
       final db = Database();
       
-      // Get Razorpay key from backend
       Map<String, String> postBody = {
-        'action': 'get_razorpay_key',
+        'make_payment': '1',
+        'community_id': community.id,
+        'vendor_id': vendorId,
       };
       
-      final keyResponse = await db.getData(postBody);
-      String key = keyResponse['data'] ?? '';
-      
-      if (key.isEmpty) {
+      final paymentResponse = await db.getData(postBody);
+
+      if (!_isSuccessResponse(paymentResponse)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment gateway error')),
+          SnackBar(content: Text(paymentResponse['message']?.toString() ?? paymentResponse['error']?.toString() ?? 'Payment gateway error')),
         );
         return;
       }
+
+      final String key = (await db.getRazorpayKey()) ?? paymentResponse['razorpay_key']?.toString() ?? paymentResponse['key']?.toString() ?? '';
+      final String razorpayOrderId = paymentResponse['razorpay_order_id']?.toString() ?? '';
+      final double amountToPay = double.tryParse(paymentResponse['amount_to_pay']?.toString() ?? community.joiningFee.toString()) ?? community.joiningFee;
+
+      if (key.isEmpty || razorpayOrderId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment initialization failed')),
+        );
+        return;
+      }
+
+      _pendingPaymentCommunity = community;
+      _pendingPaymentVendorId = vendorId;
       
       var options = {
         'key': key,
-        'amount': (community.joiningFee * 100).toInt(),
+        'amount': (amountToPay * 100).toInt(),
+        'order_id': razorpayOrderId,
         'name': community.name,
         'description': 'Community Joining Fee',
         'prefill': {'contact': '', 'email': ''},
@@ -372,6 +361,48 @@ class _DiscoverCommunitiesScreenState extends State<DiscoverCommunitiesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Payment error: $e')),
       );
+    }
+  }
+
+  Future<void> _verifyCommunityPayment(
+    Community community,
+    String vendorId,
+    PaymentSuccessResponse response,
+  ) async {
+    try {
+      final db = Database();
+      final verifyResponse = await db.getData({
+        'verifyCommunityPayment': '1',
+        'community_id': community.id,
+        'vendor_id': vendorId,
+        'payment_id': response.paymentId ?? '',
+        'order_id': response.orderId ?? '',
+        'signature': response.signature ?? '',
+      });
+
+      if (_isSuccessResponse(verifyResponse)) {
+        final int index = communities.indexWhere((c) => c.id == community.id);
+        if (index != -1) {
+          setState(() {
+            communities[index].isJoined = true;
+            communities[index].isLoading = false;
+          });
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully joined community!'), backgroundColor: Colors.green),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(verifyResponse['message']?.toString() ?? verifyResponse['error']?.toString() ?? 'Payment verified, but joining failed')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error verifying payment: $e')),
+      );
+    } finally {
+      _pendingPaymentCommunity = null;
+      _pendingPaymentVendorId = null;
     }
   }
 
