@@ -316,7 +316,7 @@ class _DiscoverCommunitiesScreenState extends State<DiscoverCommunitiesScreen> {
       final db = Database();
       
       Map<String, String> postBody = {
-        'make_payment': '1',
+        'action': 'make_payment',
         'community_id': community.id,
         'vendor_id': vendorId,
       };

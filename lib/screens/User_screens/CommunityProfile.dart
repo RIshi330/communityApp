@@ -264,7 +264,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
       final db = Database();
 
       Map<String, String> postBody = {
-        'make_payment': '1',
+        'action': 'make_payment',
         'community_id': widget.groupId,
         'vendor_id': vendorId,
       };
