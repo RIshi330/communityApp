@@ -25,6 +25,7 @@ class SuggestedGroup {
   final String description;
   final String joiningRule;
   final String visibility;
+  final double joiningFee;
   bool isJoined;
   bool isLoading;
 
@@ -37,6 +38,7 @@ class SuggestedGroup {
     required this.description,
     this.joiningRule = 'free',
     this.visibility = 'public',
+    this.joiningFee = 0.0,
     this.isJoined = false,
     this.isLoading = false,
   });
@@ -193,6 +195,10 @@ class _GroupsScreenState extends State<GroupsScreen>
         final List<dynamic> data = response['data'] ?? [];
         setState(() {
           _suggestedGroups = data.map((community) {
+            final joiningFee = double.tryParse(
+                  community['joining_fee']?.toString() ?? '0',
+                ) ??
+                0.0;
             return SuggestedGroup(
               id: community['id']?.toString() ?? '',
               name: community['community_title'] ?? 'Unknown',
@@ -208,6 +214,7 @@ class _GroupsScreenState extends State<GroupsScreen>
                   community['description'] ?? 'No description available',
               joiningRule: community['joining_rule'] ?? 'free',
               visibility: community['visibility'] ?? 'public',
+              joiningFee: joiningFee,
             );
           }).toList();
         });
@@ -238,6 +245,10 @@ class _GroupsScreenState extends State<GroupsScreen>
         final List<dynamic> data = response['data'] ?? [];
         setState(() {
           _suggestedGroups = data.map((community) {
+            final joiningFee = double.tryParse(
+                  community['joining_fee']?.toString() ?? '0',
+                ) ??
+                0.0;
             return SuggestedGroup(
               id: community['id']?.toString() ?? '',
               name: community['community_title'] ?? 'Unknown',
@@ -253,6 +264,7 @@ class _GroupsScreenState extends State<GroupsScreen>
                   community['description'] ?? 'No description available',
               joiningRule: community['joining_rule'] ?? 'free',
               visibility: community['visibility'] ?? 'public',
+              joiningFee: joiningFee,
             );
           }).toList();
         });
@@ -268,10 +280,18 @@ class _GroupsScreenState extends State<GroupsScreen>
     setState(() => group.isLoading = true);
     try {
       final database = Database();
+
+      // For paid communities, show a payment dialog or request form
+      if (group.joiningRule != 'free' && group.joiningFee > 0) {
+        setState(() => group.isLoading = false);
+        _showPaidJoiningDialog(group);
+        return;
+      }
+
       final response = await database.getData({
         'action': 'join_community',
         'group_id': group.id,
-        'vendor_id': _vendorId, // ✅ Dynamic vendor ID,
+        'vendor_id': _vendorId,
       });
 
       print('📩 Join Community Response: $response');
@@ -308,6 +328,126 @@ class _GroupsScreenState extends State<GroupsScreen>
       );
     } finally {
       setState(() => group.isLoading = false);
+    }
+  }
+
+  void _showPaidJoiningDialog(SuggestedGroup group) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Join Premium Community'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              group.name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E5FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Joining Fee:',
+                    style: TextStyle(color: Color(0xFF6B7280)),
+                  ),
+                  Text(
+                    '₹${group.joiningFee.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xff8F7CFF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Send a joining request with the fee to the community admin.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _submitPaidJoinRequest(group);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xff8F7CFF),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Send Request'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitPaidJoinRequest(SuggestedGroup group) async {
+    try {
+      final database = Database();
+      final response = await database.getData({
+        'action': 'join_community',
+        'group_id': group.id,
+        'vendor_id': _vendorId,
+        'request_message':
+            'Requesting to join this community. Ready to pay the joining fee of ₹${group.joiningFee.toStringAsFixed(2)}',
+      });
+
+      if (_isSuccessResponse(response)) {
+        setState(() {
+          group.isJoined = false; // Still pending until admin approves
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ??
+                  'Join request sent! Awaiting admin approval.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        _fetchJoinedCommunities();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to send join request'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error submitting paid join request: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -636,11 +776,37 @@ class _GroupsScreenState extends State<GroupsScreen>
                             color: Color(0xFF6B7280),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            '${_formatCount(group.memberCount)} members',
-                            style: const TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 12,
+                          Expanded(
+                            child: Text(
+                              '${_formatCount(group.memberCount)} members',
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: group.joiningRule == 'free'
+                                  ? const Color(0xFFD1FAE5)
+                                  : const Color(0xFFEDE9FE),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              group.joiningRule == 'free'
+                                  ? 'Free'
+                                  : '₹${group.joiningFee.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                color: group.joiningRule == 'free'
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xff8F7CFF),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -677,12 +843,16 @@ class _GroupsScreenState extends State<GroupsScreen>
                             ),
                           )
                         : Text(
-                            group.isJoined ? 'Joined ✓' : 'Join',
+                            group.isJoined
+                                ? 'Joined ✓'
+                                : group.joiningRule == 'free'
+                                    ? 'Join Free'
+                                    : 'Join (₹${group.joiningFee.toStringAsFixed(0)})',
                             style: TextStyle(
                               color: group.isJoined
                                   ? const Color(0xff8F7CFF)
                                   : Colors.white,
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1216,12 +1386,28 @@ class _GroupsScreenState extends State<GroupsScreen>
                       style:
                           const TextStyle(color: textMuted, fontSize: 13),
                     ),
-                    Text(
-                      price,
-                      style: const TextStyle(
-                        color: primaryColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: group.joiningRule == 'free'
+                            ? const Color(0xFFD1FAE5)
+                            : const Color(0xFFEDE9FE),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        group.joiningRule == 'free'
+                            ? 'Free'
+                            : '₹${group.joiningFee.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: group.joiningRule == 'free'
+                              ? const Color(0xFF10B981)
+                              : primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -1313,9 +1499,14 @@ class _GroupsScreenState extends State<GroupsScreen>
                                 ),
                               )
                             : Text(
-                                group.isJoined ? 'Joined ✓' : 'Join',
+                                group.isJoined
+                                    ? 'Joined ✓'
+                                    : group.joiningRule == 'free'
+                                        ? 'Join Free'
+                                        : 'Join (₹${group.joiningFee.toStringAsFixed(0)})',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13),
                               ),
                       ),
                     ),
