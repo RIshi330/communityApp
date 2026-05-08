@@ -53,6 +53,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   Map<String, dynamic> _community = {};
   late Razorpay _razorpay;
   String? _pendingPaymentVendorId;
+  String? _pendingOrderId; // DB order_id from make_payment response
 
   @override
   void initState() {
@@ -263,6 +264,8 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
     try {
       final db = Database();
 
+      print('🔄 Initiating payment for community: ${widget.groupId}, vendor: $vendorId');
+
       Map<String, String> postBody = {
         'action': 'make_payment',
         'community_id': widget.groupId,
@@ -270,21 +273,39 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
       };
 
       final paymentResponse = await db.getData(postBody);
+      print('📩 make_payment response: $paymentResponse');
 
       if (!_isSuccessResponse(paymentResponse)) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(paymentResponse['message']?.toString() ?? paymentResponse['error']?.toString() ?? 'Payment gateway error')),
+          SnackBar(
+            content: Text(paymentResponse['error']?.toString() ?? paymentResponse['message']?.toString() ?? 'Payment gateway error'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
 
-      final String key = (await db.getRazorpayKey()) ?? paymentResponse['razorpay_key']?.toString() ?? paymentResponse['key']?.toString() ?? '';
+      // ✅ Get key from response directly (backend now returns it)
+      final String key = paymentResponse['razorpay_key']?.toString() ??
+          await db.getRazorpayKey() ??
+          '';
       final String razorpayOrderId = paymentResponse['razorpay_order_id']?.toString() ?? '';
-      final double joiningFee = double.tryParse(paymentResponse['amount_to_pay']?.toString() ?? _community['joining_fee']?.toString() ?? '0') ?? 0.0;
+      // ✅ Store DB order_id so verify doesn't depend on server session
+      _pendingOrderId = paymentResponse['order_id']?.toString() ?? '';
+      final double joiningFee = double.tryParse(
+              paymentResponse['amount_to_pay']?.toString() ??
+              _community['joining_fee']?.toString() ??
+              '0') ??
+          0.0;
 
       if (key.isEmpty || razorpayOrderId.isEmpty) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment initialization failed')),
+          const SnackBar(
+            content: Text('Payment initialization failed: missing key or order ID'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -303,10 +324,13 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         }
       };
 
+      print('🚀 Opening Razorpay with key: ${key.substring(0, 8)}..., order: $razorpayOrderId, amount: ${(joiningFee * 100).toInt()}');
       _razorpay.open(options);
     } catch (e) {
+      print('❌ _initiatePayment error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment error: $e')),
+        SnackBar(content: Text('Payment error: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -314,31 +338,55 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   Future<void> _verifyCommunityPayment(String vendorId, PaymentSuccessResponse response) async {
     try {
       final database = Database();
+
+      // ✅ Send our DB order_id (not just Razorpay's order_id) so backend
+      // can find the order without relying on session (stateless Flutter requests)
+      final String dbOrderId = _pendingOrderId ?? '';
+      final String razorpayOrderId = response.orderId ?? '';
+
+      print('🔄 Verifying payment: dbOrderId=$dbOrderId, razorpayOrderId=$razorpayOrderId, paymentId=${response.paymentId}');
+
       final verifyResponse = await database.getData({
         'verifyCommunityPayment': '1',
         'community_id': widget.groupId,
         'vendor_id': vendorId,
         'payment_id': response.paymentId ?? '',
-        'order_id': response.orderId ?? '',
+        'order_id': dbOrderId,            // ✅ Our DB order_id
+        'razorpay_order_id': razorpayOrderId, // ✅ Razorpay order id for signature verify
         'signature': response.signature ?? '',
       });
 
+      print('📩 verifyCommunityPayment response: $verifyResponse');
+
+      if (!mounted) return;
+
       if (_isSuccessResponse(verifyResponse)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully joined community!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('🎉 Successfully joined the community!'),
+            backgroundColor: Colors.green,
+          ),
         );
         _fetchCommunityDetails();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(verifyResponse['message']?.toString() ?? verifyResponse['error']?.toString() ?? 'Payment verified, but joining failed')),
+          SnackBar(
+            content: Text(verifyResponse['error']?.toString() ??
+                verifyResponse['message']?.toString() ??
+                'Payment verified, but joining failed'),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
     } catch (e) {
+      print('❌ _verifyCommunityPayment error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error verifying payment: $e')),
+        SnackBar(content: Text('Error verifying payment: $e'), backgroundColor: Colors.red),
       );
     } finally {
       _pendingPaymentVendorId = null;
+      _pendingOrderId = null;
     }
   }
 
