@@ -17,28 +17,20 @@ class FollowersScreen extends StatefulWidget {
   State<FollowersScreen> createState() => _FollowersScreenState();
 }
 
-class _FollowersScreenState extends State<FollowersScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _FollowersScreenState extends State<FollowersScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<FollowerModel> _followers = [];
-  List<FollowingModel> _following = [];
   bool _isLoading = true;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 3,
-      vsync: this,
-      initialIndex: widget.initialTab,
-    );
-    _loadFollowersAndFollowing();
+    _loadFollowers();
   }
 
-  Future<void> _loadFollowersAndFollowing() async {
+  Future<void> _loadFollowers() async {
     try {
       final database = Database();
       final vendorId = await AuthService.getVendorIdString();
@@ -49,14 +41,7 @@ class _FollowersScreenState extends State<FollowersScreen>
         'vendor_id': vendorId,
       });
       
-      // Fetch following
-      final followingResponse = await database.getData({
-        'action': 'following_list',
-        'vendor_id': vendorId,
-      });
-      
       List<FollowerModel> followersList = [];
-      List<FollowingModel> followingList = [];
       
       if (followersResponse['success'] == true || followersResponse['status'] == 200) {
         final List<dynamic> followersData = followersResponse['data']['followers'] ?? [];
@@ -72,26 +57,12 @@ class _FollowersScreenState extends State<FollowersScreen>
         }).toList();
       }
       
-      if (followingResponse['success'] == true || followingResponse['status'] == 200) {
-        final List<dynamic> followingData = followingResponse['data']['following'] ?? [];
-        followingList = followingData.map((vendorJson) {
-          final vendor = vendorJson as Map<String, dynamic>;
-          return FollowingModel(
-            uid: vendor['id']?.toString() ?? '',
-            username: vendor['username'] ?? vendor['name'] ?? '',
-            displayName: vendor['name'] ?? '',
-            profileImageUrl: vendor['image'] ?? vendor['profile_image'] ?? 'https://i.pravatar.cc/150?img=1',
-          );
-        }).toList();
-      }
-      
       setState(() {
         _followers = followersList.isNotEmpty ? followersList : FollowerModel.sampleFollowers;
-        _following = followingList.isNotEmpty ? followingList : FollowingModel.sampleFollowing;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading followers/following: $e');
+      print('Error loading followers: $e');
       _loadSampleData();
     }
   }
@@ -99,14 +70,12 @@ class _FollowersScreenState extends State<FollowersScreen>
   void _loadSampleData() {
     setState(() {
       _followers = FollowerModel.sampleFollowers;
-      _following = FollowingModel.sampleFollowing;
       _isLoading = false;
     });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -135,36 +104,18 @@ class _FollowersScreenState extends State<FollowersScreen>
           child: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         title: Text(
-          widget.user.username,
+          '${widget.user.username} (${widget.user.followersCount})',
           style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 16),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey,
-          tabs: [
-            Tab(text: 'Followers (${widget.user.followersCount})'),
-            Tab(text: 'Following (${widget.user.followingCount})'),
-            const Tab(text: 'Subscriptions'),
-          ],
         ),
       ),
       body: Column(
         children: [
           _buildSearchBar(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildFollowersList(),
-                _FollowingTabContent(following: _following),
-                _buildEmptySubscriptions(),
-              ],
-            ),
+            child: _buildFollowersList(),
           ),
         ],
       ),
@@ -265,15 +216,6 @@ class _FollowersScreenState extends State<FollowersScreen>
     );
   }
 
-  Widget _buildEmptySubscriptions() {
-    return const Center(
-      child: Text(
-        "No subscriptions",
-        style: TextStyle(color: Colors.grey),
-      ),
-    );
-  }
-
   void _showActionSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -281,99 +223,6 @@ class _FollowersScreenState extends State<FollowersScreen>
         backgroundColor: const Color(0xFF7C83FD),
         behavior: SnackBarBehavior.floating,
       ),
-    );
-  }
-}
-
-// 💬 FOLLOWING TAB CONTENT
-class _FollowingTabContent extends StatelessWidget {
-  final List<FollowingModel> following;
-
-  const _FollowingTabContent({required this.following});
-
-  @override
-  Widget build(BuildContext context) {
-    if (following.isEmpty) {
-      return const Center(
-        child: Text("No following", style: TextStyle(color: Colors.grey)),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: following.length,
-      itemBuilder: (context, index) {
-        final f = following[index];
-
-        return Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundImage:
-                    NetworkImage(f.profileImageUrl),
-                backgroundColor: Colors.grey.shade800,
-              ),
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      f.username,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      f.displayName,
-                      style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              _ActionButton(
-                label: 'Message',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Message ${f.username}'),
-                      backgroundColor: const Color(0xFF7C83FD),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(width: 8),
-
-              _ActionButton(
-                label: 'Subscribe',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Subscribed to ${f.username}'),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                filled: false,
-              ),
-
-              const SizedBox(width: 8),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -412,3 +261,4 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+
