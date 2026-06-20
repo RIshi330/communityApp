@@ -8,6 +8,9 @@ import 'package:commity_app1/services/auth_service.dart';
 import 'package:commity_app1/shell.dart';
 import 'package:flutter/material.dart';
 
+import '../services/permission.dart';
+import 'business_user/business_Dashboard.dart';
+
 enum AuthMode { signIn, signUp }
 
 enum SignInMethod { password, otp, admin }
@@ -173,7 +176,7 @@ class _AuthProductionState extends State<AuthProduction> {
           context,
           MaterialPageRoute(
             builder: (_) =>
-                TopicSelectionScreen(vendorId: vendorId, isEditing: false),
+                TopicSelectionScreen( isEditing: false,vendorId: vendorId,),//comment
           ),
           (route) => false,
         );
@@ -218,7 +221,7 @@ class _AuthProductionState extends State<AuthProduction> {
     } catch (_) {}
     return false;
   }
-
+  // admin login
   Future<void> _submitSignInPassword() async {
     final email = _email.text.trim();
     final pass = _password.text.trim();
@@ -227,38 +230,53 @@ class _AuthProductionState extends State<AuthProduction> {
       _showMessage('Enter valid email', isError: true);
       return;
     }
+
     if (pass.length < 6) {
-      _showMessage('Password must be at least 6 characters', isError: true);
+      _showMessage(
+        'Password must be at least 6 characters',
+        isError: true,
+      );
       return;
     }
 
     setState(() => _loading = true);
+
     try {
-      // Admin login uses admin_login_password action from PHP API
-      // Send as JSON since the auth API reads json_decode(file_get_contents('php://input'))
-      if (_signInMethod == SignInMethod.admin) {
+      // ==========================
+      // ADMIN LOGIN
+      // ==========================
+      if (_loginRole == LoginRole.admin) {
         final response = await _db.postJsonData({
           'action': 'admin_login_password',
           'email': email,
           'password': pass,
         });
 
-        if (response['success'] == true || response['status'] == 200) {
+        if (response['success'] == true ||
+            response['status'] == 200) {
           await _showMessage('Admin login successful');
-          // Save admin session
+
           final adminId = int.tryParse(
             response['admin_id']?.toString() ??
-                response['data']?['admin_id']?.toString() ?? '0',
-          ) ?? 0;
+                response['data']?['admin_id']?.toString() ??
+                '0',
+          ) ??
+              0;
+
           await AuthService.saveAdminSession(
             adminId: adminId,
             email: response['email']?.toString() ?? email,
           );
+
           if (!mounted) return;
+          await checkFirstLogin();
+
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-            (route) => false,
+            MaterialPageRoute(
+              builder: (_) => const AdminDashboardScreen(),
+            ),
+                (route) => false,
           );
         } else {
           await _showMessage(
@@ -268,69 +286,110 @@ class _AuthProductionState extends State<AuthProduction> {
             isError: true,
           );
         }
+
         return;
       }
 
-      // Normal/Business user login
-      final Map<String, dynamic> request = {
-        'action': 'vendor_login',
-        'email': email,
-        'password': pass,
-        'rememberMe': 'true',
-        'vendor_type': _selectedVendorType.toString(),
-      };
-
-      Map response = await _db.getData(request);
-
-      if (!(response['success'] == true || response['status'] == 200)) {
-        final fallback = await _db.getData({
-          'login': 'true',
+      // ==========================
+      // NORMAL USER LOGIN
+      // ==========================
+      if (_loginRole == LoginRole.normalUser) {
+        final response = await _db.getData({
+          'action': 'vendor_login',
           'email': email,
           'password': pass,
-          'vendor_type': _selectedVendorType.toString(),
+          'vendor_type': '500',
         });
 
-        if (fallback['LOGIN_RESPONSE'] is Map) {
-          final loginResponse = Map<String, dynamic>.from(
-            fallback['LOGIN_RESPONSE'],
+        if (response['success'] == true ||
+            response['status'] == 200) {
+          await _showMessage('User login successful');
+
+          final data = response['data'] ?? {};
+
+          final vendorId = int.tryParse(
+            data['vendor_id']?.toString() ??
+                data['id']?.toString() ??
+                '0',
+          ) ??
+              0;
+
+          await AuthService.saveLoginSession(
+            vendorId: vendorId,
+            userData: Map<String, dynamic>.from(data),
           );
-          if (loginResponse['status'] == 200) {
-            response = {
-              'status': 200,
-              'success': true,
-              'data': {
-                'vendor_id':
-                    loginResponse['full_data']?['id']?.toString() ??
-                    fallback['vendor_id']?.toString() ??
-                    '0',
-                ...(loginResponse['full_data'] is Map
-                    ? Map<String, dynamic>.from(loginResponse['full_data'])
-                    : <String, dynamic>{}),
-              },
-            };
-          }
+
+          if (!mounted) return;
+          await checkFirstLogin();
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AppShell(),
+            ),
+                (route) => false,
+          );
+        } else {
+          await _showMessage(
+            response['message']?.toString() ??
+                response['error']?.toString() ??
+                'User login failed',
+            isError: true,
+          );
         }
+
+        return;
       }
 
-      if (response['success'] == true || response['status'] == 200) {
-        await _showMessage('Login successful');
-        await _goPostLogin(Map<String, dynamic>.from(response));
-      } else {
-        await _showMessage(
-          response['message']?.toString() ??
-              response['error']?.toString() ??
-              'Login failed',
-          isError: true,
-        );
+      // ==========================
+      // BUSINESS LOGIN
+      // ==========================
+      if (_loginRole == LoginRole.businessUser) {
+        final response = await _db.getData({
+          'action': 'vendor_login',
+          'email': email,
+          'password': pass,
+          'vendor_type': '20',
+        });
+
+        if (response['success'] == true ||
+            response['status'] == 200) {
+          await _showMessage(
+            'Business login successful',
+          );
+
+          if (!mounted) return;
+          await checkFirstLogin();
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const BusinessDashboard(),
+            ),
+                (route) => false,
+          );
+        } else {
+          await _showMessage(
+            response['message']?.toString() ??
+                response['error']?.toString() ??
+                'Business login failed',
+            isError: true,
+          );
+        }
+
+        return;
       }
     } catch (e) {
-      await _showMessage('Login failed: $e', isError: true);
+      await _showMessage(
+        'Login failed: $e',
+        isError: true,
+      );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
-  }
-
-  Future<void> _sendOtpForLogin() async {
+  }  Future<void> _sendOtpForLogin() async {
     final email = _email.text.trim();
     if (!_isValidEmail(email)) {
       _showMessage('Enter valid email', isError: true);

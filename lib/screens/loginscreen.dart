@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             MaterialPageRoute(
               builder: (_) =>
-                  TopicSelectionScreen(vendorId: vendorId, isEditing: false),
+                  TopicSelectionScreen( isEditing: false,vendorId: vendorId,), //comment
             ),
             (route) => false,
           );

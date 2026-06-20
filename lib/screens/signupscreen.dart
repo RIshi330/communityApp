@@ -23,7 +23,7 @@ class _SignupScreenState extends State<SignupScreen> {
   static const Color lavenderLight = Color(0xFFEEEFFF);
   static const Color grey = Color(0xFF757575);
 
-  static const String _apiUrl = '${baseUrl}community/sign_up_API.php';
+  static const String _apiUrl = '${baseUrl}new_apis/sign_up_API.php';
 
   @override
   void dispose() {

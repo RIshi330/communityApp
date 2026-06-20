@@ -1,4 +1,4 @@
-import 'package:commity_app1/screens/commity_admin.dart';
+import 'package:commity_app1/screens/commity_Manage.dart';
 import 'package:commity_app1/screens/create_community_screen.dart';
 import 'package:commity_app1/screens/group_model.dart';
 import 'package:commity_app1/screens/User_screens/CommunityProfile.dart';
@@ -870,7 +870,7 @@ class _GroupsScreenState extends State<GroupsScreen>
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CommunityPrivateAdminView(
+                        builder: (_) => CommunityPrivateAdminView(  //comment
                           groupName: community['community_title'] ?? '',
                           privacy: community['visibility'] ?? 'public',
                         ),

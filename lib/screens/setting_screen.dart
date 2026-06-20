@@ -180,7 +180,7 @@ class SettingsScreen extends StatelessWidget {
       Navigator.push(
         ctx,
         MaterialPageRoute(
-          builder: (_) => TopicSelectionScreen(isEditing: true, vendorId: vid),
+          builder: (_) => TopicSelectionScreen(isEditing: true,vendorId: vid,),//comment
         ),
       );
     }

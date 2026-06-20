@@ -21,6 +21,9 @@ import 'package:commity_app1/screens/seller_bank_accounts_screen.dart';
 import 'package:commity_app1/screens/wallet_screen.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'User_screens/promotional_pac.dart';
+import 'business_user/promotional_package.dart';
+
 class FeedScreen extends StatefulWidget {
   const FeedScreen({Key? key}) : super(key: key);
 
@@ -519,12 +522,12 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               _buildDrawerItem(
                 icon: Icons.person_outline,
-                label: 'Profile',
+                label: 'Message',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ProfileScreen()),
+                    MaterialPageRoute(builder: (_) => ChatScreen_user()),
                   );
                 },
               ),
@@ -604,12 +607,15 @@ class _FeedScreenState extends State<FeedScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const MarketplaceScreen2(),
+                       builder: (_) => const PromoMarketScreen_user(),
+                      // builder: (_) => const PromoMarketScreen(),
+
                     ),
                   );
                 },
               ),
               const Spacer(),
+              Divider(),
               _buildDrawerItem(
                 icon: Icons.logout,
                 label: 'Logout',
@@ -815,7 +821,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ChatListScreen()),
+                      MaterialPageRoute(builder: (_) => const ChatScreen_user()),
                     ),
                     child: Container(
                       width: 38,
@@ -892,11 +898,12 @@ class _FeedScreenState extends State<FeedScreen> {
                           SliverToBoxAdapter(
                             child: SizedBox(
                               height:
-                                  100, // Increased from 90 to prevent overflow
+                                  115, // Increased from 90 to prevent overflow
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
+                                  vertical: 8
                                 ),
                                 itemCount: stories.length,
                                 itemBuilder: (context, index) =>
@@ -906,8 +913,8 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                           const SliverToBoxAdapter(
                             child: Divider(
-                              color: Color(0xFFE6E6F0),
-                              thickness: 0.5,
+                               color: Color(0xFFE6E6F0),
+                              thickness: 0.7,
                               height: 0.5,
                             ),
                           ),
@@ -946,7 +953,7 @@ class _FeedScreenState extends State<FeedScreen> {
         onPressed: _openCreateBottomSheet,
         backgroundColor: const Color(0xff8F7CFF),
         elevation: 4,
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        child: const Icon(Icons.add, color: Colors.black, size: 28),
       ),
     );
   }

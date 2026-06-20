@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:commity_app1/screens/admin/admin_bottom_navigation.dart';
 import 'package:http/http.dart' as http;
 
+import '../../services/auth_service.dart';
+import '../auth_screen.dart';
+
 void main() {
   runApp(const AdminProfileApp());
 }
@@ -77,7 +80,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Future<void> fetchCommunityAdminProfile() async {
     try {
       final String url =
-          '${baseUrl}new_apis/admin/community_admin_profile.php';
+          '${baseUrl}new_apis/admin/admin_profile.php';
 
       final response = await http.post(
         Uri.parse(url),
@@ -85,7 +88,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       );
 
       if (response.statusCode == 200) {
-        if (response.body.trim().isEmpty) {
+        if (response.body
+            .trim()
+            .isEmpty) {
           throw FormatException('Server returned empty response');
         }
         final data = jsonDecode(response.body);
@@ -93,7 +98,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         final admin = data['data']?['admin'] as Map<String, dynamic>?;
 
         if (!mounted || admin == null) return;
-
+        print(response.body);
         setState(() {
           profilePic = admin['profile_pic']?.toString() ?? '';
           adminName = admin['name']?.toString() ?? 'Admin';
@@ -122,17 +127,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text('Admin Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-        ],
+
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.settings_outlined),
+        //     onPressed: () {},
+        //   ),
+        // ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -221,6 +228,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             ),
 
             const SizedBox(height: 16),
+            _buildLogoutZone(),
+            const SizedBox(height: 16),
 
             // Danger Zone
             _buildDangerZone(),
@@ -260,13 +269,16 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
                 ),
-                child: CircleAvatar(
-                  radius: 52,
-                  backgroundColor: Colors.black12,
-                  backgroundImage: profilePic.isNotEmpty
-                      ? NetworkImage(profilePic)
-                      : const AssetImage(avatarImage) as ImageProvider,
-                ),
+                 child: CircleAvatar(
+                   radius: 52,
+                   backgroundColor: Colors.black12,
+                   backgroundImage: profilePic.isNotEmpty
+                       ? NetworkImage(profilePic)
+                       : null,
+                   child: profilePic.isEmpty
+                       ? const Icon(Icons.person, size: 52)
+                       : null,
+                 )
               ),
               Positioned(
                 right: 2,
@@ -318,45 +330,47 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             'Created $createdDate',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _showEditProfileModal(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    backgroundColor: AppTheme.primarySoft,
-                    side: BorderSide.none,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Log Out', style: TextStyle(fontSize: 12)),
-                ),
-              ),
-            ],
-          ),
+          // const SizedBox(height: 16),
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: ElevatedButton(
+          //         onPressed: () => _showEditProfileModal(),
+          //         style: ElevatedButton.styleFrom(
+          //           backgroundColor: AppTheme.primary,
+          //           foregroundColor: Colors.white,
+          //           elevation: 0,
+          //           shape: RoundedRectangleBorder(
+          //             borderRadius: BorderRadius.circular(10),
+          //           ),
+          //           padding: const EdgeInsets.symmetric(vertical: 14),
+          //         ),
+          //         child: const Text(
+          //           'Save Changes',
+          //           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          //         ),
+          //       ),
+          //     ),
+          //     const SizedBox(width: 12),
+          //     Expanded(
+          //       child: OutlinedButton(
+          //         onPressed: () {
+          //
+          //         },
+          //         style: OutlinedButton.styleFrom(
+          //           foregroundColor: AppTheme.primary,
+          //           backgroundColor: AppTheme.primarySoft,
+          //           side: BorderSide.none,
+          //           shape: RoundedRectangleBorder(
+          //             borderRadius: BorderRadius.circular(10),
+          //           ),
+          //           padding: const EdgeInsets.symmetric(vertical: 14),
+          //         ),
+          //         child: const Text('Log Out', style: TextStyle(fontSize: 12)),
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -689,157 +703,219 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
+  Widget _buildLogoutZone() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5F5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.error.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.logout, color: AppTheme.error, size: 24),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF991B1B),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Logout This Account',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              //logout
+               _handleAdminLogout();
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.error,
+              side: const BorderSide(color: AppTheme.error),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text(
+              'Logout',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─── EDIT PROFILE MODAL ───
   void _showEditProfileModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Edit Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: AppTheme.textMuted),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
+      builder: (ctx) =>
+          Container(
+            height: MediaQuery
+                .of(context)
+                .size
+                .height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            const Divider(height: 1, color: AppTheme.border),
-            // Form
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _modalField('Full Name', 'Alex Johnson'),
-                    const SizedBox(height: 16),
-                    _modalField(
-                      'Email Address',
-                      'alex.j@comm-unity.app',
-                      type: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-                    _modalField(
-                      'Phone Number',
-                      '+1 (555) 000-1234',
-                      type: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Bio',
-                      style: TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      maxLines: 4,
-                      controller: TextEditingController(
-                        text:
+                      IconButton(
+                        icon: const Icon(
+                            Icons.close, color: AppTheme.textMuted),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: AppTheme.border),
+                // Form
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _modalField('Full Name', 'Alex Johnson'),
+                        const SizedBox(height: 16),
+                        _modalField(
+                          'Email Address',
+                          'alex.j@comm-unity.app',
+                          type: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+                        _modalField(
+                          'Phone Number',
+                          '+1 (555) 000-1234',
+                          type: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Bio',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          maxLines: 4,
+                          controller: TextEditingController(
+                            text:
                             'Dedicated community builder and strategic manager with over 8 years of experience in fostering inclusive digital spaces.',
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppTheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppTheme.border),
+                          ),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: AppTheme.surface,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: AppTheme.border),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: AppTheme.border),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppTheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppTheme.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppTheme.primary,
-                            width: 2,
+                      ],
+                    ),
+                  ),
+                ),
+                // Footer
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: AppTheme.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primary,
+                            backgroundColor: AppTheme.primarySoft,
+                            side: BorderSide.none,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Save Changes',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppTheme.border)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primary,
-                        backgroundColor: AppTheme.primarySoft,
-                        side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Save Changes',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
-  Widget _modalField(
-    String label,
-    String value, {
-    TextInputType type = TextInputType.text,
-  }) {
+  Widget _modalField(String label,
+      String value, {
+        TextInputType type = TextInputType.text,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -885,119 +961,163 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (ctx) =>
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Security Verification',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.shield_outlined,
+                    color: AppTheme.primary,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 const Text(
-                  'Security Verification',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Enter Verification Code',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: AppTheme.textMuted),
-                  onPressed: () => Navigator.pop(ctx),
+                const SizedBox(height: 4),
+                const Text(
+                  "We've sent a 6-digit code to your email alex.j@***.app",
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 24),
+                // OTP Fields
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(
+                    6,
+                        (i) =>
+                        SizedBox(
+                          width: 46,
+                          height: 56,
+                          child: TextField(
+                            textAlign: TextAlign.center,
+                            maxLength: 1,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme
+                                    .border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppTheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {},
+                  child: const Text(
+                    'Resend Code',
+                    style: TextStyle(color: AppTheme.primary, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Verify & Continue',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: AppTheme.primary,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Enter Verification Code',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "We've sent a 6-digit code to your email alex.j@***.app",
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            // OTP Fields
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(
-                6,
-                (i) => SizedBox(
-                  width: 46,
-                  height: 56,
-                  child: TextField(
-                    textAlign: TextAlign.center,
-                    maxLength: 1,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppTheme.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppTheme.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Resend Code',
-                style: TextStyle(color: AppTheme.primary, fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Verify & Continue',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
     );
+  }
+
+  Future<void> _handleAdminLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) =>
+          AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            title: const Text(
+                'Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text(
+                'Are you sure you want to logout from the admin panel?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      await AuthService.clearSession();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthProduction()),
+            (route) => false,
+      );
+    }
   }
 }

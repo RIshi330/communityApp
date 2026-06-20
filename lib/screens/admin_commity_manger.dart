@@ -1,4 +1,4 @@
-import 'package:commity_app1/screens/commity_admin.dart';
+import 'package:commity_app1/screens/commity_Manage.dart';
 import 'package:commity_app1/screens/create_community_screen.dart'
     hide InviteMembersScreen;
 import 'package:commity_app1/screens/feed_screen.dart';
@@ -47,79 +47,55 @@ class _AdminCommunityManagerScreenState
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xff8F7CFF),
-        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Admin Manager",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Row(
-              children: [
-                Text(
-                  widget.groupName,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isPrivate
-                        ? Colors.orange.withValues(alpha: 0.85)
-                        : Colors.green.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isPrivate ? Icons.lock_outline : Icons.public,
-                        size: 9,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        widget.privacy,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+        centerTitle: true,
+        title: Text(
+          widget.groupName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _menuTile(
-            title: "Community Overview",
-            icon: Icons.dashboard,
-            iconBg: const Color(0xFFE8E5FF),
-            iconColor: const Color(0xff8F7CFF),
-            onTap: _navigate(
-              CommunityPrivateAdminView(
-                groupName: widget.groupName,
-                privacy: widget.privacy,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isPrivate
+                      ? Colors.orange.withValues(alpha: 0.85)
+                      : Colors.green.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPrivate ? Icons.lock_outline : Icons.public,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.privacy,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 4),
-
+        ],
+      ),      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
           _expandableSection(
             title: "Community Info",
             icon: Icons.info_outline,
@@ -260,17 +236,6 @@ class _AdminCommunityManagerScreenState
                 ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 8),
-          _menuTile(
-            title: "Community Settings",
-            icon: Icons.settings_outlined,
-            iconBg: const Color(0xFFF3F4F6),
-            iconColor: const Color(0xFF6B7280),
-            onTap: _navigate(
-              const CreateCommunityScreen(openCommunityHomeOnCreate: true),
-            ),
           ),
 
           const SizedBox(height: 8),

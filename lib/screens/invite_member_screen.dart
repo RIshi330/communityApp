@@ -1,4 +1,4 @@
-import 'package:commity_app1/screens/commity_admin.dart';
+import 'package:commity_app1/screens/commity_Manage.dart';
 import 'package:commity_app1/Database/Database.dart';
 import 'package:commity_app1/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
@@ -382,22 +382,22 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
                       title: Text(name),
                       leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0] : 'U')),
                       onTap: () {
-                        Navigator.pop(sheetContext);
-                        final user = ChatUser.fromFollowing(
-                          id: 'invite_dm_$i',
-                          name: name,
-                          avatarUrl: 'https://i.pravatar.cc/150?img=${(i % 70) + 1}',
-                        );
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              user: user,
-                              initialMessage: 'Join ${widget.groupName} community: $inviteLink',
-                            ),
-                          ),
-                        );
+                        // Navigator.pop(sheetContext);
+                        // final user = ChatUser.fromFollowing(
+                        //   id: 'invite_dm_$i',
+                        //   name: name,
+                        //   avatarUrl: 'https://i.pravatar.cc/150?img=${(i % 70) + 1}',
+                        // );
+                        //
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(
+                        //     builder: (_) => ChatScreen(
+                        //       user: user,
+                        //       initialMessage: 'Join ${widget.groupName} community: $inviteLink',
+                        //     ),
+                        //   ),
+                        // );
                       },
                     );
                   },
@@ -492,32 +492,32 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-                  // ✅ Next/Skip दोन्ही → CommunityPrivateAdminView
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CommunityPrivateAdminView(
-                        groupName: widget.groupName,
-                        privacy: widget.privacy,
-                      ),
-                    ),
-                  );
-                },
-            child: Text(
-              invitedCount > 0 ? "Next ($invitedCount)" : "Next",
-              style: TextStyle(
-                color: invitedCount > 0
-                    ? const Color(0xff8F7CFF)
-                    : const Color(0xFF6B7280),
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        ],
+        // actions: [
+        //   TextButton(
+        //     onPressed: () {
+        //           // ✅ Next/Skip दोन्ही → CommunityPrivateAdminView
+        //           Navigator.push(
+        //             context,
+        //             MaterialPageRoute(
+        //               builder: (_) => CommunityPrivateAdminView(
+        //                 groupName: widget.groupName,
+        //                 privacy: widget.privacy,
+        //               ),
+        //             ),
+        //           );
+        //         },
+        //     child: Text(
+        //       invitedCount > 0 ? "Next ($invitedCount)" : "Next",
+        //       style: TextStyle(
+        //         color: invitedCount > 0
+        //             ? const Color(0xff8F7CFF)
+        //             : const Color(0xFF6B7280),
+        //         fontWeight: FontWeight.w600,
+        //         fontSize: 15,
+        //       ),
+        //     ),
+        //   ),
+        // ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, color: Color(0xFFE5E7EB)),

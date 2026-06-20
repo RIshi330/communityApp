@@ -43,7 +43,6 @@ class _AdminCommunityManagerScreenState
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
-              // जागतिक यादीमधून गट हटवा
               setState(() {
                 userCreatedGroups
                     .removeWhere((group) => group.name == widget.groupName);
