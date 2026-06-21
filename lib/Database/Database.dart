@@ -210,7 +210,7 @@ class Database {
       final copy = response.body;
       print('RAW JSON RESPONSE BODY: "$copy"');
       print('RESPONSE STATUS CODE: ${response.statusCode}');
-      print('RESPONSE HEADERS: ${response.headers}');
+      print('RESPONSE HEd: ${response.headers}');
 
       if (copy.isEmpty) {
         result = {

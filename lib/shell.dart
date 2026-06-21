@@ -286,7 +286,7 @@ class _AppShellState extends State<AppShell> {
         currentScreen = const FeedScreen();
         break;
       case 1:
-        currentScreen = ChatListScreen();
+        currentScreen = ChatScreen_user();
         break;
       case 2:
         // ✅ index 2 la blank/feed dikhav — create button navigate karto
